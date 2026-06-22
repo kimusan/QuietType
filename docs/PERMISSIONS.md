@@ -6,7 +6,7 @@ This document tracks every Android permission VoiceMe requests and why. Keep it 
 
 | Permission / capability | Required for | Current status |
 | --- | --- | --- |
-| Accessibility service binding (`android.permission.BIND_ACCESSIBILITY_SERVICE`) | User-enabled service that will detect focused editable fields and host the future keyboard-adjacent mic control | Registered in the app manifest. The service requests window-content capability so Android can support future focused-field detection. The current Kotlin service is a safe stub: it receives accessibility events but does not inspect text content, record audio, draw overlays, or insert dictated text yet. |
+| Accessibility service binding (`android.permission.BIND_ACCESSIBILITY_SERVICE`) | User-enabled service that detects focused editable fields and hosts the keyboard-adjacent mic preview control | Registered in the app manifest. The service requests window-content capability so Android can identify focused editable fields. The current Kotlin service checks editable/focused/password metadata, hides for password fields by default, and shows a draggable accessibility overlay preview. It does not read field text content, record audio, transcribe speech, or insert dictated text yet. |
 
 ## Planned permissions
 

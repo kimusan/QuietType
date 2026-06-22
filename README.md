@@ -47,7 +47,7 @@ VoiceMe is not released yet. Planned release channels:
 
 ## Development status
 
-The project has an initial Android/Kotlin/Compose bootstrap with an interactive Material 3 setup preview. The current app can be installed as a debug build and lets users step through planned onboarding, status, and settings screens. Onboarding/settings choices are persisted locally, and the app is registered as a safe AccessibilityService stub for the future keyboard-adjacent floating mic flow. It does not record audio or insert dictated text yet. A local-only `ROADMAP.md` file may exist in developer checkouts and is intentionally ignored by git. Tracked planning and release documents live under `docs/`.
+The project has an initial Android/Kotlin/Compose bootstrap with an interactive Material 3 setup preview. The current app can be installed as a debug build and lets users step through planned onboarding, status, and settings screens. Onboarding/settings choices are persisted locally. When the user enables the Accessibility service, VoiceMe can detect focused editable fields and show a draggable microphone preview overlay using Android's accessibility overlay window type. It does not record audio, transcribe speech, read field text, or insert dictated text yet. A local-only `ROADMAP.md` file may exist in developer checkouts and is intentionally ignored by git. Tracked planning and release documents live under `docs/`.
 
 ## Build from source
 

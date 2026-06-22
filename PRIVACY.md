@@ -20,7 +20,7 @@ Dictated text is inserted into the user's chosen input field. VoiceMe should not
 
 ## Accessibility service
 
-VoiceMe includes an AccessibilityService registration so users can enable the future keyboard-adjacent dictation mode from Android settings. This capability is needed to detect focused editable fields and place a mic control next to the normal keyboard. In the current preview build, the service stub receives accessibility events but does not inspect text content, record audio, draw overlays, or insert dictated text.
+VoiceMe includes an AccessibilityService registration so users can enable the keyboard-adjacent dictation mode from Android settings. This capability is needed to detect focused editable fields and place a mic control next to the normal keyboard. In the current preview build, the service looks only at accessibility metadata needed to decide whether a focused node is editable or password/sensitive; it does not read field text. If an eligible editable field is focused, it shows a draggable microphone preview overlay. The preview overlay does not record audio, transcribe speech, or insert dictated text.
 
 ## Local preferences
 

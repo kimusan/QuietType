@@ -231,7 +231,7 @@ private fun VoiceMeStatusScreen(
             textAlign = TextAlign.Center,
         )
         Text(
-            text = "The app shell is installed and interactive. Accessibility registration is now present, while dictation, recording, and model downloads remain future milestones.",
+            text = "The app shell is installed and interactive. When the Accessibility service is enabled, VoiceMe now detects focused editable fields and shows a draggable microphone preview overlay. Dictation, recording, and model downloads remain future milestones.",
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
         )
@@ -241,7 +241,7 @@ private fun VoiceMeStatusScreen(
         )
         StatusCard(
             title = "Input strategy",
-            body = "VoiceMe is registered as an accessibility service candidate. Android grants window-content capability for future focused-field detection, but this preview service does not inspect text, record audio, draw overlays, or insert dictated text yet.",
+            body = "VoiceMe is registered as an accessibility service candidate. Android grants window-content capability so the service can identify editable focused fields and place a draggable preview mic. It does not inspect field text, record audio, or insert dictated text yet.",
         )
         StatusCard(
             title = "Current dictation interaction",
