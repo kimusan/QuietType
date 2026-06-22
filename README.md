@@ -47,7 +47,29 @@ VoiceMe is not released yet. Planned release channels:
 
 ## Development status
 
-The project is in planning/bootstrap. A local-only `ROADMAP.md` file may exist in developer checkouts and is intentionally ignored by git. Tracked planning and release documents live under `docs/`.
+The project has an initial Android/Kotlin/Compose bootstrap with a Material 3 shell. A local-only `ROADMAP.md` file may exist in developer checkouts and is intentionally ignored by git. Tracked planning and release documents live under `docs/`.
+
+## Build from source
+
+Prerequisites:
+
+- JDK 17 or newer.
+- Android SDK with platform 37 installed.
+- Android SDK Build Tools 36/37 installed.
+
+Build and verify:
+
+```bash
+./gradlew testDebugUnitTest lintDebug assembleDebug
+```
+
+The current bootstrap also verifies a release APK can be assembled locally:
+
+```bash
+./gradlew assembleRelease
+```
+
+Release APKs are not signed for distribution yet; signing setup will be added before the first public release.
 
 ## License
 
