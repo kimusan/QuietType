@@ -6,6 +6,7 @@ This document tracks every Android permission VoiceMe requests and why. Keep it 
 
 | Permission / capability | Required for | Current status |
 | --- | --- | --- |
+| `INTERNET` | Explicit user-initiated ASR model downloads | Declared for the Models screen download action. Downloads must use HTTPS and SHA-256 verification before a model is marked ready; network is not used for dictation, telemetry, or cloud transcription. |
 | `RECORD_AUDIO` | Capturing speech while the user explicitly starts dictation | Runtime permission requested from the Status screen. The current foreground shell opens local `AudioRecord`; no ASR model is connected and raw audio is not persisted. |
 | `FOREGROUND_SERVICE` | Running a visible service while microphone capture is active | Declared for the recording shell. The service shows a persistent low-importance notification while active. |
 | `FOREGROUND_SERVICE_MICROPHONE` | Android foreground-service type for microphone capture | Declared for `VoiceMeRecordingService` so microphone capture happens under the explicit microphone foreground-service type. |
@@ -16,14 +17,14 @@ This document tracks every Android permission VoiceMe requests and why. Keep it 
 
 | Permission / capability | Required for | Notes |
 | --- | --- | --- |
-| Internet/network | Real model downloads or optional update metadata | Not declared yet. Add only when real download/checksum flows are implemented; avoid in offline/F-Droid flavor if practical and never use for cloud transcription by default. |
+| Optional release/update metadata | Future update checks or model catalog refreshes | Not implemented. Any future network metadata must remain explicit and documented; avoid in offline/F-Droid flavor if practical and never use for cloud transcription by default. |
 | Input method service | Optional VoiceMe keyboard fallback | More reliable text insertion, but user must switch keyboards. |
 
 ## Permissions intentionally avoided
 
 - Contacts, calendar, location, SMS, call log, camera, and account permissions are not part of the product scope.
 - Overlay permission (`SYSTEM_ALERT_WINDOW`) should not be needed for the MVP if the accessibility overlay is sufficient.
-- Network permission is intentionally still absent until real, user-initiated model download code exists.
+- Network permission is limited to real, user-initiated model download code.
 
 ## Sensitive-field policy
 

@@ -16,6 +16,8 @@ import androidx.core.content.ContextCompat
 import dk.schulz.voiceme.dictation.DictationSessionReducer
 import dk.schulz.voiceme.dictation.DictationSessionState
 import dk.schulz.voiceme.dictation.VoiceMeRecordingService
+import dk.schulz.voiceme.models.ModelArtifactInstallResult
+import dk.schulz.voiceme.models.ModelArtifactInstaller
 import dk.schulz.voiceme.models.ModelCatalogReducer
 import dk.schulz.voiceme.models.ModelCatalogState
 import dk.schulz.voiceme.settings.AppSettings
@@ -27,6 +29,7 @@ class MainActivity : ComponentActivity() {
     private var dictationState by mutableStateOf(
         DictationSessionState.idle(hasMicrophonePermission = false),
     )
+    private var modelDownloadStatus by mutableStateOf<String?>(null)
 
     private val microphonePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -50,16 +53,12 @@ class MainActivity : ComponentActivity() {
             settingsStore.save(settings)
         }
 
-        fun modelCatalogState(): ModelCatalogState = ModelCatalogState(
-            selectedModelId = appSettings.selectedModelId,
-            downloadedModelIds = appSettings.downloadedModelIds,
-        )
-
         setContent {
             VoiceMeApp(
                 appSettings = appSettings,
                 dictationState = dictationState,
                 modelCatalogState = modelCatalogState(),
+                modelDownloadStatus = modelDownloadStatus,
                 onSettingsChange = ::saveSettings,
                 onOpenAccessibilitySettings = {
                     startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
@@ -79,15 +78,18 @@ class MainActivity : ComponentActivity() {
                     saveSettings(appSettings.copy(selectedModelId = modelId))
                 },
                 onDownloadModel = { modelId ->
-                    val updated = ModelCatalogReducer.markDownloaded(modelCatalogState(), modelId)
-                    saveSettings(
-                        appSettings.copy(
-                            selectedModelId = updated.selectedModelId,
-                            downloadedModelIds = updated.downloadedModelIds,
-                        ),
+                    startModelDownload(
+                        modelId = modelId,
+                        onSettingsReady = ::saveSettings,
                     )
                 },
                 onDeleteModel = { modelId ->
+                    modelCatalogState().catalog.modelById(modelId)?.let { model ->
+                        ModelArtifactInstaller(
+                            modelRootDirectory = filesDir.resolve("models"),
+                        ).delete(model)
+                    }
+                    modelDownloadStatus = "Deleted local files for $modelId."
                     val updated = ModelCatalogReducer.deleteModel(modelCatalogState(), modelId)
                     saveSettings(appSettings.copy(downloadedModelIds = updated.downloadedModelIds))
                 },
@@ -116,4 +118,49 @@ class MainActivity : ComponentActivity() {
         this,
         Manifest.permission.RECORD_AUDIO,
     ) == PackageManager.PERMISSION_GRANTED
+
+    private fun modelCatalogState(): ModelCatalogState = ModelCatalogState(
+        selectedModelId = appSettings.selectedModelId,
+        downloadedModelIds = appSettings.downloadedModelIds,
+    )
+
+    private fun startModelDownload(
+        modelId: String,
+        onSettingsReady: (AppSettings) -> Unit,
+    ) {
+        val model = modelCatalogState().catalog.modelById(modelId) ?: return
+        modelDownloadStatus = "Downloading ${model.name}…"
+        Thread {
+            val result = runCatching {
+                ModelArtifactInstaller(
+                    modelRootDirectory = filesDir.resolve("models"),
+                ).install(model)
+            }.getOrElse { error ->
+                runOnUiThread {
+                    modelDownloadStatus = "Download failed for ${model.name}: ${error.message ?: error::class.java.simpleName}."
+                }
+                return@Thread
+            }
+
+            runOnUiThread {
+                when (result) {
+                    is ModelArtifactInstallResult.Installed -> {
+                        val currentState = modelCatalogState()
+                        val updated = ModelCatalogReducer.markDownloaded(currentState, modelId)
+                        modelDownloadStatus = "Verified and stored ${model.name}."
+                        onSettingsReady(
+                            appSettings.copy(
+                                selectedModelId = appSettings.selectedModelId,
+                                downloadedModelIds = updated.downloadedModelIds,
+                            ),
+                        )
+                    }
+
+                    is ModelArtifactInstallResult.ChecksumMismatch -> {
+                        modelDownloadStatus = "Checksum mismatch for ${model.name}; deleted the downloaded file and did not mark it ready."
+                    }
+                }
+            }
+        }.start()
+    }
 }

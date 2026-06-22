@@ -32,8 +32,8 @@ VoiceMe is planned as a privacy-first app:
 
 - Audio and transcripts stay on-device during dictation.
 - No analytics or telemetry by default.
-- Network access, if present, is only for explicit user-initiated model downloads or release/update metadata.
-- Model files are downloaded only after user consent and verified before use.
+- Network access is limited to explicit user-initiated model downloads or future release/update metadata.
+- Model files are downloaded over HTTPS only after user action and are SHA-256 verified before being marked ready.
 - Users can delete downloaded models and local data from settings.
 
 See `PRIVACY.md`, `docs/THREAT_MODEL.md`, and `docs/PERMISSIONS.md` for details.
@@ -47,7 +47,7 @@ VoiceMe is not released yet. Planned release channels:
 
 ## Development status
 
-The project has an Android/Kotlin/Compose prototype with interactive Material 3 setup, status, settings, and local-model screens. Onboarding/settings/model choices are persisted locally. The app can request microphone permission and start a foreground `AudioRecord` shell with a visible notification, but no ASR model is connected yet. When the user enables the Accessibility service, VoiceMe detects focused editable fields, shows a draggable microphone overlay, and can insert a fixed ASR-stub phrase into the focused field for end-to-end insertion testing. It is still not release-ready: real model downloads, checksum verification, streaming transcription, and production text-insertion safeguards remain future work. A local-only `ROADMAP.md` file may exist in developer checkouts and is intentionally ignored by git. Tracked planning and release documents live under `docs/`.
+The project has an Android/Kotlin/Compose prototype with interactive Material 3 setup, status, settings, and local-model screens. Onboarding/settings/model choices are persisted locally. The app can request microphone permission and start a foreground `AudioRecord` shell with a visible notification, but no ASR model is connected yet. When the user enables the Accessibility service, VoiceMe detects focused editable fields, shows a draggable microphone overlay, and can insert a fixed ASR-stub phrase into the focused field for end-to-end insertion testing. The Models screen now starts explicit HTTPS model downloads, verifies SHA-256 before marking a model ready, and deletes private model files; current catalog checksums are placeholders until final model artifacts are locked. It is still not release-ready: streaming transcription and production text-insertion safeguards remain future work. A local-only `ROADMAP.md` file may exist in developer checkouts and is intentionally ignored by git. Tracked planning and release documents live under `docs/`.
 
 ## Build from source
 

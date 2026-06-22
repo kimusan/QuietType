@@ -16,3 +16,4 @@ The format follows Keep a Changelog principles, and versions should follow seman
 - Foreground microphone recording shell with runtime microphone permission request, visible service notification, and local `AudioRecord` capture groundwork.
 - Model catalog UI with persisted selected-model and prepare/delete marker state for local ASR model planning.
 - ASR-stub text insertion prototype that appends a fixed test phrase through accessibility `ACTION_SET_TEXT` when the user taps the overlay.
+- HTTPS model artifact download plumbing with SHA-256 verification, private model-file storage, and deletion semantics before a model is marked ready.

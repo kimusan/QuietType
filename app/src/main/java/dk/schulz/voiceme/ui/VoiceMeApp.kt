@@ -48,6 +48,7 @@ fun VoiceMeApp(
     appSettings: AppSettings = AppSettings.default(),
     dictationState: DictationSessionState = DictationSessionState.idle(hasMicrophonePermission = false),
     modelCatalogState: ModelCatalogState = ModelCatalogState.default(),
+    modelDownloadStatus: String? = null,
     onSettingsChange: (AppSettings) -> Unit = {},
     onOpenAccessibilitySettings: () -> Unit = {},
     onRequestMicrophonePermission: () -> Unit = {},
@@ -62,6 +63,7 @@ fun VoiceMeApp(
             appSettings = appSettings,
             dictationState = dictationState,
             modelCatalogState = modelCatalogState,
+            modelDownloadStatus = modelDownloadStatus,
             onSettingsChange = onSettingsChange,
             onOpenAccessibilitySettings = onOpenAccessibilitySettings,
             onRequestMicrophonePermission = onRequestMicrophonePermission,
@@ -80,6 +82,7 @@ fun VoiceMeHomeScreen(
     appSettings: AppSettings,
     dictationState: DictationSessionState,
     modelCatalogState: ModelCatalogState,
+    modelDownloadStatus: String?,
     onSettingsChange: (AppSettings) -> Unit,
     onOpenAccessibilitySettings: () -> Unit,
     onRequestMicrophonePermission: () -> Unit,
@@ -153,6 +156,7 @@ fun VoiceMeHomeScreen(
 
                 else -> VoiceMeModelsScreen(
                     modelCatalogState = modelCatalogState,
+                    modelDownloadStatus = modelDownloadStatus,
                     onSelectModel = onSelectModel,
                     onDownloadModel = onDownloadModel,
                     onDeleteModel = onDeleteModel,
@@ -395,6 +399,7 @@ private fun VoiceMeSettingsPreview(
 @Composable
 private fun VoiceMeModelsScreen(
     modelCatalogState: ModelCatalogState,
+    modelDownloadStatus: String?,
     onSelectModel: (String) -> Unit,
     onDownloadModel: (String) -> Unit,
     onDeleteModel: (String) -> Unit,
@@ -409,9 +414,15 @@ private fun VoiceMeModelsScreen(
             style = MaterialTheme.typography.headlineMedium,
         )
         Text(
-            text = "This is the model download/delete shell. It records explicit local install choices now; real binary download, checksum verification, and ASR loading are next.",
+            text = "This screen starts explicit HTTPS model downloads, verifies SHA-256 before marking a model ready, and deletes private model files on request. Current catalog checksums are placeholders until final model artifacts are locked.",
             style = MaterialTheme.typography.bodyLarge,
         )
+        modelDownloadStatus?.let { status ->
+            StatusCard(
+                title = "Model download status",
+                body = status,
+            )
+        }
         modelCatalogState.catalog.models.forEach { model ->
             val selected = model.id == modelCatalogState.selectedModel.id
             val downloaded = modelCatalogState.downloadedModelIds.contains(model.id)
@@ -434,7 +445,7 @@ private fun VoiceMeModelsScreen(
                         style = MaterialTheme.typography.bodySmall,
                     )
                     Text(
-                        text = "Status: ${if (downloaded) "downloaded marker present" else "not downloaded"}${if (selected) " · selected" else ""}",
+                        text = "Status: ${if (downloaded) "verified local artifact" else "not downloaded"}${if (selected) " · selected" else ""}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -455,7 +466,7 @@ private fun VoiceMeModelsScreen(
                             },
                             modifier = Modifier.weight(1f),
                         ) {
-                            Text(if (downloaded) "Delete" else "Prepare")
+                            Text(if (downloaded) "Delete" else "Download")
                         }
                     }
                 }
@@ -542,6 +553,7 @@ private fun VoiceMeHomeScreenPreview() {
             appSettings = AppSettings.default(),
             dictationState = DictationSessionState.idle(hasMicrophonePermission = false),
             modelCatalogState = ModelCatalogState.default(),
+            modelDownloadStatus = null,
             onSettingsChange = {},
             onOpenAccessibilitySettings = {},
             onRequestMicrophonePermission = {},

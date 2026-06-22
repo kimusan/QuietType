@@ -8,6 +8,7 @@ data class VoiceModel(
     val language: String,
     val sizeMegabytes: Int,
     val license: String,
+    val artifact: ModelArtifact,
     val isOfflineCapable: Boolean,
 )
 
@@ -29,6 +30,12 @@ data class ModelCatalog(
                     language = "English",
                     sizeMegabytes = 72,
                     license = "Model license to verify before release",
+                    artifact = ModelArtifact(
+                        url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-en-2023-06-26-mobile.tar.bz2",
+                        sha256 = "0000000000000000000000000000000000000000000000000000000000000000",
+                        fileName = "sherpa-onnx-streaming-zipformer-en-2023-06-26-mobile.tar.bz2",
+                        licenseUrl = "https://github.com/k2-fsa/sherpa-onnx/blob/master/LICENSE",
+                    ),
                     isOfflineCapable = true,
                 ),
                 VoiceModel(
@@ -39,6 +46,12 @@ data class ModelCatalog(
                     language = "English",
                     sizeMegabytes = 620,
                     license = "Model license to verify before release",
+                    artifact = ModelArtifact(
+                        url = "https://example.invalid/voiceme/parakeet-tdt-ctc-android-candidate.zip",
+                        sha256 = "0000000000000000000000000000000000000000000000000000000000000000",
+                        fileName = "parakeet-tdt-ctc-android-candidate.zip",
+                        licenseUrl = "https://www.nvidia.com/en-us/agreements/",
+                    ),
                     isOfflineCapable = true,
                 ),
             ),

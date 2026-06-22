@@ -28,11 +28,11 @@ VoiceMe stores a small set of local preferences, such as onboarding completion a
 
 ## Model files
 
-ASR models may be downloaded after the user chooses a model. The current UI provides a model catalog and local prepare/delete marker shell; it does not download real model binaries yet. Future downloads must use HTTPS and checksum verification. Users must be able to delete downloaded models. Model licenses and approximate sizes must be shown before download.
+ASR models may be downloaded after the user chooses a model. The current UI starts explicit HTTPS model downloads, verifies the artifact SHA-256 before marking a model ready, writes verified artifacts under the app's private `filesDir/models/` directory, and deletes those private files when the user deletes a model. Current catalog checksums are placeholders until final model artifacts are locked, so the app should not mark downloaded artifacts ready in production builds until real checksums are entered. Model licenses and approximate sizes must be shown before download.
 
 ## Network
 
-The offline/F-Droid flavor should avoid network access during dictation. If the app includes network permission, the exact reasons must be listed here and in `docs/PERMISSIONS.md`.
+VoiceMe declares network access for explicit user-initiated model downloads. Network access is not used for cloud transcription, telemetry, or dictation. The offline/F-Droid flavor should avoid network access during dictation and may need a bundled-model or side-loaded-model path.
 
 ## Diagnostics
 
