@@ -8,12 +8,21 @@ enum class OnboardingStepId {
     OfflineModel,
 }
 
+enum class OnboardingAction {
+    None,
+    OpenAccessibilitySettings,
+    RequestMicrophonePermission,
+    OpenModels,
+}
+
 data class OnboardingStep(
     val id: OnboardingStepId,
     val eyebrow: String,
     val title: String,
     val body: String,
     val primaryAction: String = "Continue",
+    val action: OnboardingAction = OnboardingAction.None,
+    val actionLabel: String = "",
 )
 
 data class OnboardingFlow(
@@ -53,21 +62,27 @@ data class OnboardingFlow(
                 OnboardingStep(
                     id = OnboardingStepId.InteractionMode,
                     eyebrow = "Step 3 of 5",
-                    title = "Choose how VoiceMe appears.",
-                    body = "The recommended mode is a small floating mic button shown beside the keyboard. A VoiceMe keyboard fallback can be added later for stricter apps.",
+                    title = "Enable the floating mic button.",
+                    body = "VoiceMe uses Android Accessibility to notice focused editable fields and place a draggable mic button beside the keyboard. This permission must be enabled manually in Android settings.",
+                    action = OnboardingAction.OpenAccessibilitySettings,
+                    actionLabel = "Open Accessibility settings",
                 ),
                 OnboardingStep(
                     id = OnboardingStepId.Microphone,
                     eyebrow = "Step 4 of 5",
-                    title = "Microphone permission comes later.",
-                    body = "VoiceMe will ask for microphone access only when recording is implemented and you explicitly start the permission step.",
+                    title = "Allow microphone access.",
+                    body = "VoiceMe asks for microphone access only when you explicitly tap this step. Audio capture is local; the current build starts a foreground recording shell and does not send audio to the cloud.",
+                    action = OnboardingAction.RequestMicrophonePermission,
+                    actionLabel = "Allow microphone",
                 ),
                 OnboardingStep(
                     id = OnboardingStepId.OfflineModel,
                     eyebrow = "Step 5 of 5",
-                    title = "Offline model setup will be explicit.",
-                    body = "Before downloading a speech model, VoiceMe will show model size, language, license, and checksum so you know exactly what is stored locally.",
-                    primaryAction = "Finish for now",
+                    title = "Choose an offline model.",
+                    body = "VoiceMe defaults to a compact multilingual model candidate. Open Models to review language coverage, size, license notes, and checksum before downloading.",
+                    primaryAction = "Finish setup",
+                    action = OnboardingAction.OpenModels,
+                    actionLabel = "Open Models",
                 ),
             ),
         )

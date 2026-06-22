@@ -23,9 +23,25 @@ data class ModelCatalog(
         fun default(): ModelCatalog = ModelCatalog(
             models = listOf(
                 VoiceModel(
+                    id = "sherpa-onnx-nemo-fast-conformer-ctc-multilingual-int8",
+                    name = "Compact multilingual dictation",
+                    description = "Default on-device multilingual model candidate for broad European-language testing. It is not streaming-ready until the runtime adapter is wired and benchmarked.",
+                    engine = "sherpa-onnx / NeMo FastConformer CTC int8",
+                    language = "Belarusian, Croatian, English, French, German, Italian, Polish, Russian, Spanish, Ukrainian",
+                    sizeMegabytes = 98,
+                    license = "Apache-2.0 runtime; model artifact license requires release NOTICE review",
+                    artifact = ModelArtifact(
+                        url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-fast-conformer-ctc-be-de-en-es-fr-hr-it-pl-ru-uk-20k-int8.tar.bz2",
+                        sha256 = "2116eebbfc923ee3332a244e8c933ccc1b7e6783070f7bf842d0b5fc64f6ae33",
+                        fileName = "sherpa-onnx-nemo-fast-conformer-ctc-be-de-en-es-fr-hr-it-pl-ru-uk-20k-int8.tar.bz2",
+                        licenseUrl = "https://github.com/k2-fsa/sherpa-onnx/blob/master/LICENSE",
+                    ),
+                    isOfflineCapable = true,
+                ),
+                VoiceModel(
                     id = "sherpa-onnx-streaming-zipformer-en-int8",
                     name = "Compact streaming English",
-                    description = "Small on-device streaming model candidate for early latency and battery testing.",
+                    description = "Small streaming English model kept as a low-latency fallback candidate for runtime benchmarking.",
                     engine = "sherpa-onnx",
                     language = "English",
                     sizeMegabytes = 122,
@@ -40,8 +56,8 @@ data class ModelCatalog(
                 ),
                 VoiceModel(
                     id = "parakeet-tdt-ctc-android-candidate",
-                    name = "Parakeet-class high accuracy",
-                    description = "Future optional high-accuracy pack after Android export and performance validation.",
+                    name = "Parakeet-class high accuracy English",
+                    description = "Future optional high-accuracy English pack after Android export and performance validation. The small Parakeet artifacts found so far are English-only, not the multilingual default.",
                     engine = "ONNX Runtime / sherpa-onnx candidate",
                     language = "English",
                     sizeMegabytes = 620,

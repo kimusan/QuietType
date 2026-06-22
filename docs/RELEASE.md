@@ -61,10 +61,10 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 Then manually verify:
 
-1. Onboarding explains microphone, accessibility, offline model download, and privacy behavior.
+1. Onboarding explains microphone, accessibility, offline model download, and privacy behavior, and its action buttons open the relevant system/app flows.
 2. Microphone permission prompt appears only after user action.
 3. Foreground microphone notification appears while recording.
-4. Accessibility service shows the floating mic only for editable fields.
+4. After enabling VoiceMe in Android Accessibility settings, tapping the Status screen overlay test field shows the actual draggable floating mic; password/sensitive fields remain blocked.
 5. Password/sensitive fields are blocked by default.
 6. Model download is explicit, HTTPS-only, SHA-256 verified, and stored under app-private storage.
 7. Downloaded archive state is not presented as ASR-ready until runtime preparation succeeds.

@@ -2,7 +2,7 @@
 
 VoiceMe is an Android voice dictation app designed to stay out of the way until it is needed. When an editable field is active, VoiceMe provides a small Material You floating microphone control so users can dictate text into the current input without switching away from their normal workflow.
 
-The long-term goal is private, near-real-time transcription that runs on-device using downloadable ASR models. The MVP will prioritize a reliable fully local streaming model stack, with Parakeet-class models evaluated as optional high-accuracy model packs once Android performance is proven.
+The long-term goal is private, near-real-time transcription that runs on-device using downloadable ASR models. The MVP will prioritize a reliable fully local model stack with a compact multilingual sherpa-onnx-compatible model as the default candidate. Parakeet-class models are still tracked as optional high-accuracy packs, but the small Parakeet artifacts found so far are English-only.
 
 ## Product goals
 
@@ -21,7 +21,7 @@ The long-term goal is private, near-real-time transcription that runs on-device 
 - Accessibility overlay mode for the primary “works with your existing keyboard” experience.
 - Optional IME mode as a more reliable fallback for text insertion.
 - Foreground microphone service built around `AudioRecord`.
-- On-device ASR initially using sherpa-onnx with a compact streaming int8 model.
+- On-device ASR initially using sherpa-onnx with a compact multilingual int8 model candidate, plus separate runtime-readiness gates before any archive is treated as dictation-ready.
 - Optional later engines/model packs: Parakeet ONNX exports, whisper.cpp, and/or Vosk fallback.
 
 See `docs/ARCHITECTURE.md` for the current technical plan.

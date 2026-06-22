@@ -7,11 +7,15 @@ import org.junit.Test
 
 class ModelCatalogTest {
     @Test
-    fun defaultCatalogProvidesCompactOfflineModelFirst() {
+    fun defaultCatalogProvidesCompactMultilingualOfflineModelFirst() {
         val catalog = ModelCatalog.default()
 
-        assertEquals("sherpa-onnx-streaming-zipformer-en-int8", catalog.recommended.id)
+        assertEquals("sherpa-onnx-nemo-fast-conformer-ctc-multilingual-int8", catalog.recommended.id)
         assertTrue(catalog.recommended.isOfflineCapable)
+        assertTrue(catalog.recommended.language.contains("Danish", ignoreCase = true).not())
+        assertTrue(catalog.recommended.language.contains("English", ignoreCase = true))
+        assertTrue(catalog.recommended.language.contains("German", ignoreCase = true))
+        assertTrue(catalog.recommended.language.contains("Spanish", ignoreCase = true))
         assertTrue(catalog.recommended.sizeMegabytes < 150)
     }
 
@@ -25,7 +29,7 @@ class ModelCatalogTest {
 
     @Test
     fun downloadedSelectedModelIsStoredButNotReadyUntilPreparedAndDeleteResetsIt() {
-        val selected = "sherpa-onnx-streaming-zipformer-en-int8"
+        val selected = ModelCatalog.default().recommended.id
         val downloaded = ModelCatalogReducer.markDownloaded(
             state = ModelCatalogState.default().selectModel(selected),
             modelId = selected,

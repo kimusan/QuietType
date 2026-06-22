@@ -16,6 +16,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -23,6 +24,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -38,6 +40,7 @@ import dk.schulz.voiceme.dictation.DictationBlockReason
 import dk.schulz.voiceme.dictation.DictationSessionState
 import dk.schulz.voiceme.models.ModelCatalogState
 import dk.schulz.voiceme.models.VoiceModel
+import dk.schulz.voiceme.onboarding.OnboardingAction
 import dk.schulz.voiceme.onboarding.OnboardingFlow
 import dk.schulz.voiceme.onboarding.OnboardingStep
 import dk.schulz.voiceme.settings.AppSettings
@@ -134,6 +137,14 @@ fun VoiceMeHomeScreen(
                             currentStep = onboardingFlow.nextIndex(currentStep)
                         }
                     },
+                    onStepAction = { action ->
+                        when (action) {
+                            OnboardingAction.OpenAccessibilitySettings -> onOpenAccessibilitySettings()
+                            OnboardingAction.RequestMicrophonePermission -> onRequestMicrophonePermission()
+                            OnboardingAction.OpenModels -> selectedSection = 3
+                            OnboardingAction.None -> Unit
+                        }
+                    },
                 )
 
                 1 -> VoiceMeStatusScreen(
@@ -194,6 +205,7 @@ private fun VoiceMeOnboardingScreen(
     totalSteps: Int,
     onBack: () -> Unit,
     onNext: () -> Unit,
+    onStepAction: (OnboardingAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -227,10 +239,18 @@ private fun VoiceMeOnboardingScreen(
             ),
         ) {
             Text(
-                text = "No microphone or model download is requested by this preview. Accessibility settings can be opened from the status screen so you can see where VoiceMe will be enabled.",
+                text = onboardingHelpText(step),
                 modifier = Modifier.padding(16.dp),
                 style = MaterialTheme.typography.bodyMedium,
             )
+        }
+        if (step.action != OnboardingAction.None) {
+            Button(
+                onClick = { onStepAction(step.action) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(step.actionLabel)
+            }
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -336,6 +356,7 @@ private fun VoiceMeStatusScreen(
             title = "Selected local model",
             body = "${modelCatalogState.selectedModel.name}: ${modelCatalogState.selectedInstallState}. Open Models to prepare or delete the local model marker.",
         )
+        OverlayPreviewCard()
         Button(
             onClick = onOpenAccessibilitySettings,
             modifier = Modifier.fillMaxWidth(),
@@ -346,6 +367,48 @@ private fun VoiceMeStatusScreen(
             Text("Review setup again")
         }
     }
+}
+
+@Composable
+private fun OverlayPreviewCard(
+    modifier: Modifier = Modifier,
+) {
+    var previewText by rememberSaveable { mutableStateOf("Tap here after enabling Accessibility to make the real VoiceMe overlay appear.") }
+
+    Card(modifier = modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = "Floating button test",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "Enable VoiceMe in Android Accessibility settings, then tap this editable field. The actual accessibility overlay should appear near the lower-right edge and can be dragged.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            OutlinedTextField(
+                value = previewText,
+                onValueChange = { previewText = it },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Overlay test input") },
+                minLines = 2,
+            )
+        }
+    }
+}
+
+private fun onboardingHelpText(step: OnboardingStep): String = when (step.action) {
+    OnboardingAction.OpenAccessibilitySettings ->
+        "Android will open system settings. Choose VoiceMe, enable the service, then return here and use the Status screen test field to see the real floating button."
+    OnboardingAction.RequestMicrophonePermission ->
+        "Android will show the microphone permission dialog now. If accepted, VoiceMe starts its local foreground recording shell so the permission path is exercised."
+    OnboardingAction.OpenModels ->
+        "The Models screen shows the default multilingual model, checksum, size, and download action. Downloaded archives are still gated until runtime preparation is implemented."
+    OnboardingAction.None ->
+        "No permission is requested on this step. Continue when you are ready."
 }
 
 @Composable
