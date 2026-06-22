@@ -13,7 +13,7 @@ enum class ModelDownloadStep {
     DownloadHttpsArtifact,
     VerifySha256,
     UnpackPrivateModelFiles,
-    MarkReadyAfterVerification,
+    MarkDownloadedArchiveAfterVerification,
 }
 
 data class ModelDownloadPlan(
@@ -31,7 +31,7 @@ data class ModelDownloadPlan(
                 ModelDownloadStep.DownloadHttpsArtifact,
                 ModelDownloadStep.VerifySha256,
                 ModelDownloadStep.UnpackPrivateModelFiles,
-                ModelDownloadStep.MarkReadyAfterVerification,
+                ModelDownloadStep.MarkDownloadedArchiveAfterVerification,
             ),
         )
     }

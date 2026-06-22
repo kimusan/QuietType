@@ -28,12 +28,12 @@ data class ModelCatalog(
                     description = "Small on-device streaming model candidate for early latency and battery testing.",
                     engine = "sherpa-onnx",
                     language = "English",
-                    sizeMegabytes = 72,
-                    license = "Model license to verify before release",
+                    sizeMegabytes = 122,
+                    license = "Apache-2.0 runtime; model artifact license requires release NOTICE review",
                     artifact = ModelArtifact(
-                        url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-en-2023-06-26-mobile.tar.bz2",
-                        sha256 = "0000000000000000000000000000000000000000000000000000000000000000",
-                        fileName = "sherpa-onnx-streaming-zipformer-en-2023-06-26-mobile.tar.bz2",
+                        url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17.tar.bz2",
+                        sha256 = "9c559283e8498d3fe95913c79ca1cb454bb26281ac2b102b41306c7d752765d9",
+                        fileName = "sherpa-onnx-streaming-zipformer-en-20M-2023-02-17.tar.bz2",
                         licenseUrl = "https://github.com/k2-fsa/sherpa-onnx/blob/master/LICENSE",
                     ),
                     isOfflineCapable = true,
@@ -61,21 +61,23 @@ data class ModelCatalog(
 
 enum class ModelInstallState {
     NotDownloaded,
-    Downloaded,
+    DownloadedArchive,
+    PreparedForDictation,
 }
 
 data class ModelCatalogState(
     val selectedModelId: String,
     val downloadedModelIds: Set<String>,
+    val preparedModelIds: Set<String> = emptySet(),
     val catalog: ModelCatalog = ModelCatalog.default(),
 ) {
     val selectedModel: VoiceModel = catalog.modelById(selectedModelId) ?: catalog.recommended
-    val selectedInstallState: ModelInstallState = if (downloadedModelIds.contains(selectedModel.id)) {
-        ModelInstallState.Downloaded
-    } else {
-        ModelInstallState.NotDownloaded
+    val selectedInstallState: ModelInstallState = when {
+        preparedModelIds.contains(selectedModel.id) -> ModelInstallState.PreparedForDictation
+        downloadedModelIds.contains(selectedModel.id) -> ModelInstallState.DownloadedArchive
+        else -> ModelInstallState.NotDownloaded
     }
-    val isReadyForDictation: Boolean = selectedInstallState == ModelInstallState.Downloaded
+    val isReadyForDictation: Boolean = selectedInstallState == ModelInstallState.PreparedForDictation
 
     fun selectModel(modelId: String): ModelCatalogState = if (catalog.modelById(modelId) == null) {
         this
@@ -87,6 +89,7 @@ data class ModelCatalogState(
         fun default(): ModelCatalogState = ModelCatalogState(
             selectedModelId = ModelCatalog.default().recommended.id,
             downloadedModelIds = emptySet(),
+            preparedModelIds = emptySet(),
         )
     }
 }
@@ -98,6 +101,17 @@ object ModelCatalogReducer {
         state.copy(downloadedModelIds = state.downloadedModelIds + modelId)
     }
 
+    fun markPrepared(state: ModelCatalogState, modelId: String): ModelCatalogState = if (
+        state.catalog.modelById(modelId) == null || !state.downloadedModelIds.contains(modelId)
+    ) {
+        state
+    } else {
+        state.copy(preparedModelIds = state.preparedModelIds + modelId)
+    }
+
     fun deleteModel(state: ModelCatalogState, modelId: String): ModelCatalogState =
-        state.copy(downloadedModelIds = state.downloadedModelIds - modelId)
+        state.copy(
+            downloadedModelIds = state.downloadedModelIds - modelId,
+            preparedModelIds = state.preparedModelIds - modelId,
+        )
 }

@@ -20,6 +20,7 @@ class AppSettingsStore(
             HideInSensitiveFields to preferences.getString(HideInSensitiveFields, null).orEmpty(),
             SelectedModelId to preferences.getString(SelectedModelId, null).orEmpty(),
             DownloadedModelIds to preferences.getString(DownloadedModelIds, null).orEmpty(),
+            PreparedModelIds to preferences.getString(PreparedModelIds, null).orEmpty(),
         ).filterValues { it.isNotEmpty() },
     )
 
@@ -40,5 +41,6 @@ class AppSettingsStore(
         private const val HideInSensitiveFields = "hideInSensitiveFields"
         private const val SelectedModelId = "selectedModelId"
         private const val DownloadedModelIds = "downloadedModelIds"
+        private const val PreparedModelIds = "preparedModelIds"
     }
 }

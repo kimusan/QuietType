@@ -33,7 +33,8 @@ VoiceMe is planned as a privacy-first app:
 - Audio and transcripts stay on-device during dictation.
 - No analytics or telemetry by default.
 - Network access is limited to explicit user-initiated model downloads or future release/update metadata.
-- Model files are downloaded over HTTPS only after user action and are SHA-256 verified before being marked ready.
+- Model files are downloaded over HTTPS only after user action and are SHA-256 verified before being stored as downloaded archives.
+- A downloaded archive is not considered dictation-ready until a runtime preparation step verifies the files needed by the ASR engine.
 - Users can delete downloaded models and local data from settings.
 
 See `PRIVACY.md`, `docs/THREAT_MODEL.md`, and `docs/PERMISSIONS.md` for details.
@@ -47,7 +48,7 @@ VoiceMe is not released yet. Planned release channels:
 
 ## Development status
 
-The project has an Android/Kotlin/Compose prototype with interactive Material 3 setup, status, settings, and local-model screens. Onboarding/settings/model choices are persisted locally. The app can request microphone permission and start a foreground `AudioRecord` shell with a visible notification, but no ASR model is connected yet. When the user enables the Accessibility service, VoiceMe detects focused editable fields, shows a draggable microphone overlay, and can insert a fixed ASR-stub phrase into the focused field for end-to-end insertion testing. The Models screen now starts explicit HTTPS model downloads, verifies SHA-256 before marking a model ready, and deletes private model files; current catalog checksums are placeholders until final model artifacts are locked. It is still not release-ready: streaming transcription and production text-insertion safeguards remain future work. A local-only `ROADMAP.md` file may exist in developer checkouts and is intentionally ignored by git. Tracked planning and release documents live under `docs/`.
+The project has an Android/Kotlin/Compose prototype with interactive Material 3 setup, status, settings, and local-model screens. Onboarding/settings/model choices are persisted locally. The app can request microphone permission and start a foreground `AudioRecord` shell with a visible notification, but no ASR model is connected yet. When the user enables the Accessibility service, VoiceMe detects focused editable fields, shows a draggable microphone overlay, and can insert a fixed ASR-stub phrase into the focused field for end-to-end insertion testing. The Models screen starts explicit HTTPS model downloads, verifies SHA-256 before storing a downloaded archive marker, and deletes private model files. The compact sherpa-onnx English streaming archive is locked to a real GitHub release URL and SHA-256 checksum, but the app deliberately does not mark downloaded archives as dictation-ready until ASR runtime extraction/preparation is implemented and tested. It is still not public-release-ready: streaming transcription and production text-insertion safeguards remain future work. A local-only `ROADMAP.md` file may exist in developer checkouts and is intentionally ignored by git. Tracked planning and release documents live under `docs/`.
 
 ## Build from source
 
@@ -69,7 +70,7 @@ The current bootstrap also verifies a release APK can be assembled locally:
 ./gradlew assembleRelease
 ```
 
-Release APKs are not signed for distribution yet; signing setup will be added before the first public release.
+Release signing can be configured with an ignored root-level `keystore.properties` copied from `keystore.properties.example`. Without that file, `assembleRelease` builds an unsigned artifact for local verification. See `docs/RELEASE.md` for the release gate, signing setup, and artifact checklist.
 
 ## License
 

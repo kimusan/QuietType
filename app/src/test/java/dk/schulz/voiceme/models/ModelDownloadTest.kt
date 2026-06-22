@@ -40,7 +40,7 @@ class ModelDownloadTest {
     }
 
     @Test
-    fun downloadPlanRequiresUserInitiatedNetworkAndVerifiedArtifactBeforeReady() {
+    fun downloadPlanRequiresUserInitiatedNetworkAndVerifiedArchiveBeforePreparation() {
         val model = ModelCatalog.default().recommended
         val plan = ModelDownloadPlan.forModel(model)
 
@@ -49,6 +49,6 @@ class ModelDownloadTest {
         assertEquals(ModelDownloadStep.DownloadHttpsArtifact, plan.steps[0])
         assertEquals(ModelDownloadStep.VerifySha256, plan.steps[1])
         assertEquals(ModelDownloadStep.UnpackPrivateModelFiles, plan.steps[2])
-        assertEquals(ModelDownloadStep.MarkReadyAfterVerification, plan.steps[3])
+        assertEquals(ModelDownloadStep.MarkDownloadedArchiveAfterVerification, plan.steps[3])
     }
 }

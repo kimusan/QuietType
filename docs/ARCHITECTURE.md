@@ -62,7 +62,8 @@ Shared components for both modes:
 - `ModelManager`
   - Lists available model packs.
   - Downloads/imports user-selected models.
-  - Verifies checksums/signatures.
+  - Verifies checksums/signatures before storing downloaded archive state.
+  - Extracts/prepares runtime files and only then marks a model `PreparedForDictation`.
   - Deletes models on request.
 - `DictationForegroundService`
   - Requests microphone capture through `AudioRecord`.

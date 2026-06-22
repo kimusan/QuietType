@@ -37,6 +37,7 @@ import dk.schulz.voiceme.R
 import dk.schulz.voiceme.dictation.DictationBlockReason
 import dk.schulz.voiceme.dictation.DictationSessionState
 import dk.schulz.voiceme.models.ModelCatalogState
+import dk.schulz.voiceme.models.VoiceModel
 import dk.schulz.voiceme.onboarding.OnboardingFlow
 import dk.schulz.voiceme.onboarding.OnboardingStep
 import dk.schulz.voiceme.settings.AppSettings
@@ -414,7 +415,7 @@ private fun VoiceMeModelsScreen(
             style = MaterialTheme.typography.headlineMedium,
         )
         Text(
-            text = "This screen starts explicit HTTPS model downloads, verifies SHA-256 before marking a model ready, and deletes private model files on request. Current catalog checksums are placeholders until final model artifacts are locked.",
+            text = "This screen starts explicit HTTPS model downloads, verifies SHA-256 before storing downloaded archives, and deletes private model files on request. Downloaded archives are not dictation-ready until runtime preparation succeeds.",
             style = MaterialTheme.typography.bodyLarge,
         )
         modelDownloadStatus?.let { status ->
@@ -426,6 +427,7 @@ private fun VoiceMeModelsScreen(
         modelCatalogState.catalog.models.forEach { model ->
             val selected = model.id == modelCatalogState.selectedModel.id
             val downloaded = modelCatalogState.downloadedModelIds.contains(model.id)
+            val prepared = modelCatalogState.preparedModelIds.contains(model.id)
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -445,7 +447,7 @@ private fun VoiceMeModelsScreen(
                         style = MaterialTheme.typography.bodySmall,
                     )
                     Text(
-                        text = "Status: ${if (downloaded) "verified local artifact" else "not downloaded"}${if (selected) " · selected" else ""}",
+                        text = "Status: ${model.statusLabel(downloaded = downloaded, prepared = prepared)}${if (selected) " · selected" else ""}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )
@@ -473,6 +475,12 @@ private fun VoiceMeModelsScreen(
             }
         }
     }
+}
+
+private fun VoiceModel.statusLabel(downloaded: Boolean, prepared: Boolean): String = when {
+    prepared -> "prepared for dictation"
+    downloaded -> "downloaded archive · preparation pending"
+    else -> "not downloaded"
 }
 
 @Composable

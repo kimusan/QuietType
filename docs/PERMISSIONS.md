@@ -6,7 +6,7 @@ This document tracks every Android permission VoiceMe requests and why. Keep it 
 
 | Permission / capability | Required for | Current status |
 | --- | --- | --- |
-| `INTERNET` | Explicit user-initiated ASR model downloads | Declared for the Models screen download action. Downloads must use HTTPS and SHA-256 verification before a model is marked ready; network is not used for dictation, telemetry, or cloud transcription. |
+| `INTERNET` | Explicit user-initiated ASR model downloads | Declared for the Models screen download action. Downloads must use HTTPS and SHA-256 verification before a model archive is marked downloaded; network is not used for dictation, telemetry, or cloud transcription. |
 | `RECORD_AUDIO` | Capturing speech while the user explicitly starts dictation | Runtime permission requested from the Status screen. The current foreground shell opens local `AudioRecord`; no ASR model is connected and raw audio is not persisted. |
 | `FOREGROUND_SERVICE` | Running a visible service while microphone capture is active | Declared for the recording shell. The service shows a persistent low-importance notification while active. |
 | `FOREGROUND_SERVICE_MICROPHONE` | Android foreground-service type for microphone capture | Declared for `VoiceMeRecordingService` so microphone capture happens under the explicit microphone foreground-service type. |

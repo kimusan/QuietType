@@ -91,7 +91,12 @@ class MainActivity : ComponentActivity() {
                     }
                     modelDownloadStatus = "Deleted local files for $modelId."
                     val updated = ModelCatalogReducer.deleteModel(modelCatalogState(), modelId)
-                    saveSettings(appSettings.copy(downloadedModelIds = updated.downloadedModelIds))
+                    saveSettings(
+                        appSettings.copy(
+                            downloadedModelIds = updated.downloadedModelIds,
+                            preparedModelIds = updated.preparedModelIds,
+                        ),
+                    )
                 },
             )
         }
@@ -122,6 +127,7 @@ class MainActivity : ComponentActivity() {
     private fun modelCatalogState(): ModelCatalogState = ModelCatalogState(
         selectedModelId = appSettings.selectedModelId,
         downloadedModelIds = appSettings.downloadedModelIds,
+        preparedModelIds = appSettings.preparedModelIds,
     )
 
     private fun startModelDownload(
@@ -147,17 +153,18 @@ class MainActivity : ComponentActivity() {
                     is ModelArtifactInstallResult.Installed -> {
                         val currentState = modelCatalogState()
                         val updated = ModelCatalogReducer.markDownloaded(currentState, modelId)
-                        modelDownloadStatus = "Verified and stored ${model.name}."
+                        modelDownloadStatus = "Verified and stored ${model.name}. Runtime preparation is still required before dictation."
                         onSettingsReady(
                             appSettings.copy(
                                 selectedModelId = appSettings.selectedModelId,
                                 downloadedModelIds = updated.downloadedModelIds,
+                                preparedModelIds = updated.preparedModelIds,
                             ),
                         )
                     }
 
                     is ModelArtifactInstallResult.ChecksumMismatch -> {
-                        modelDownloadStatus = "Checksum mismatch for ${model.name}; deleted the downloaded file and did not mark it ready."
+                        modelDownloadStatus = "Checksum mismatch for ${model.name}; deleted the downloaded file and did not mark it downloaded."
                     }
                 }
             }

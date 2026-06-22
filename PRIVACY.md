@@ -28,7 +28,7 @@ VoiceMe stores a small set of local preferences, such as onboarding completion a
 
 ## Model files
 
-ASR models may be downloaded after the user chooses a model. The current UI starts explicit HTTPS model downloads, verifies the artifact SHA-256 before marking a model ready, writes verified artifacts under the app's private `filesDir/models/` directory, and deletes those private files when the user deletes a model. Current catalog checksums are placeholders until final model artifacts are locked, so the app should not mark downloaded artifacts ready in production builds until real checksums are entered. Model licenses and approximate sizes must be shown before download.
+ASR models may be downloaded after the user chooses a model. The current UI starts explicit HTTPS model downloads, verifies the artifact SHA-256 before storing a downloaded-archive marker, writes verified artifacts under the app's private `filesDir/models/` directory, and deletes those private files when the user deletes a model. The compact sherpa-onnx English streaming archive is locked to a real GitHub release URL and SHA-256 checksum. Downloaded archives are deliberately not treated as dictation-ready until the ASR runtime preparation step verifies/extracts the files needed by the engine. Model licenses and approximate sizes must be shown before download.
 
 ## Network
 

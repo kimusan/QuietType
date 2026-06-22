@@ -12,7 +12,7 @@ class ModelCatalogTest {
 
         assertEquals("sherpa-onnx-streaming-zipformer-en-int8", catalog.recommended.id)
         assertTrue(catalog.recommended.isOfflineCapable)
-        assertTrue(catalog.recommended.sizeMegabytes < 100)
+        assertTrue(catalog.recommended.sizeMegabytes < 150)
     }
 
     @Test
@@ -24,17 +24,22 @@ class ModelCatalogTest {
     }
 
     @Test
-    fun downloadedSelectedModelMakesCatalogReadyAndDeleteResetsIt() {
+    fun downloadedSelectedModelIsStoredButNotReadyUntilPreparedAndDeleteResetsIt() {
         val selected = "sherpa-onnx-streaming-zipformer-en-int8"
         val downloaded = ModelCatalogReducer.markDownloaded(
             state = ModelCatalogState.default().selectModel(selected),
             modelId = selected,
         )
 
-        assertTrue(downloaded.isReadyForDictation)
-        assertEquals(ModelInstallState.Downloaded, downloaded.selectedInstallState)
+        assertFalse(downloaded.isReadyForDictation)
+        assertEquals(ModelInstallState.DownloadedArchive, downloaded.selectedInstallState)
 
-        val deleted = ModelCatalogReducer.deleteModel(downloaded, selected)
+        val prepared = ModelCatalogReducer.markPrepared(downloaded, selected)
+
+        assertTrue(prepared.isReadyForDictation)
+        assertEquals(ModelInstallState.PreparedForDictation, prepared.selectedInstallState)
+
+        val deleted = ModelCatalogReducer.deleteModel(prepared, selected)
 
         assertFalse(deleted.isReadyForDictation)
         assertEquals(ModelInstallState.NotDownloaded, deleted.selectedInstallState)

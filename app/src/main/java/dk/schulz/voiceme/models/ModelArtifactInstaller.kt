@@ -26,7 +26,7 @@ object HttpsArtifactByteSource : ArtifactByteSource {
 sealed class ModelArtifactInstallResult {
     data class Installed(
         val artifactFile: File,
-        val installState: ModelInstallState = ModelInstallState.Downloaded,
+        val installState: ModelInstallState = ModelInstallState.DownloadedArchive,
     ) : ModelArtifactInstallResult()
 
     data class ChecksumMismatch(

@@ -32,7 +32,7 @@ class ModelArtifactInstallerTest {
         assertTrue(result.artifactFile.exists())
         assertEquals(model.artifact.fileName, result.artifactFile.name)
         assertTrue(result.artifactFile.path.contains(model.id))
-        assertEquals(ModelInstallState.Downloaded, result.installState)
+        assertEquals(ModelInstallState.DownloadedArchive, result.installState)
     }
 
     @Test
