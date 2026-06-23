@@ -15,6 +15,8 @@ class AppSettingsTest {
         assertTrue(settings.offlineOnly)
         assertFalse(settings.transcriptHistoryEnabled)
         assertTrue(settings.hideInSensitiveFields)
+        assertEquals(16, settings.overlayOffsetXDp)
+        assertTrue(settings.overlayOffsetYDp >= 320)
     }
 
     @Test
@@ -39,6 +41,8 @@ class AppSettingsTest {
             selectedModelId = AppSettings.default().selectedModelId,
             downloadedModelIds = setOf("sherpa-onnx-streaming-zipformer-en-int8"),
             preparedModelIds = setOf("sherpa-onnx-streaming-zipformer-en-int8"),
+            overlayOffsetXDp = 42,
+            overlayOffsetYDp = 360,
         )
 
         val restored = AppSettingsCodec.decode(AppSettingsCodec.encode(original))

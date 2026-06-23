@@ -21,6 +21,8 @@ class AppSettingsStore(
             SelectedModelId to preferences.getString(SelectedModelId, null).orEmpty(),
             DownloadedModelIds to preferences.getString(DownloadedModelIds, null).orEmpty(),
             PreparedModelIds to preferences.getString(PreparedModelIds, null).orEmpty(),
+            OverlayOffsetXDp to preferences.getString(OverlayOffsetXDp, null).orEmpty(),
+            OverlayOffsetYDp to preferences.getString(OverlayOffsetYDp, null).orEmpty(),
         ).filterValues { it.isNotEmpty() },
     )
 
@@ -42,5 +44,7 @@ class AppSettingsStore(
         private const val SelectedModelId = "selectedModelId"
         private const val DownloadedModelIds = "downloadedModelIds"
         private const val PreparedModelIds = "preparedModelIds"
+        private const val OverlayOffsetXDp = "overlayOffsetXDp"
+        private const val OverlayOffsetYDp = "overlayOffsetYDp"
     }
 }

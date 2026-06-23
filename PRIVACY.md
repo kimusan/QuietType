@@ -12,7 +12,7 @@ VoiceMe is designed to be privacy-first. This document describes the intended pr
 
 ## Audio
 
-VoiceMe uses the microphone only while the user actively starts dictation. The current prototype has a foreground microphone shell that opens `AudioRecord` locally and shows a visible notification, but no ASR engine is connected yet. Future builds will stream audio to the local ASR engine running on the device. The app should not persist raw audio unless a future feature explicitly asks for user consent and this policy is updated.
+VoiceMe uses the microphone only while the user actively starts dictation. The current prototype starts the foreground microphone shell from the floating overlay interaction: hold-to-talk starts capture on press and stops on release, while tap-to-toggle starts or stops capture on each non-drag tap. Granting microphone permission by itself does not start capture. The foreground shell opens `AudioRecord` locally and shows a visible notification, but no ASR engine is connected yet. Future builds will stream audio to the local ASR engine running on the device. The app should not persist raw audio unless a future feature explicitly asks for user consent and this policy is updated.
 
 ## Transcripts
 

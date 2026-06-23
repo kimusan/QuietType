@@ -1,9 +1,11 @@
 package dk.schulz.voiceme.accessibility
 
+import android.Manifest
 import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.pm.PackageManager
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.Bundle
@@ -16,13 +18,19 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import dk.schulz.voiceme.R
+import dk.schulz.voiceme.dictation.DictationCommand
+import dk.schulz.voiceme.dictation.DictationInteractionController
+import dk.schulz.voiceme.dictation.VoiceMeRecordingService
 import dk.schulz.voiceme.settings.AppSettingsStore
+import dk.schulz.voiceme.settings.DictationInteraction
 
 class VoiceMeAccessibilityService : AccessibilityService() {
     private lateinit var settingsStore: AppSettingsStore
     private lateinit var windowManager: WindowManager
     private var overlayView: View? = null
+    private var isDictationRecording = false
     private var lastDetection: FocusedFieldDetection? = null
 
     override fun onCreate() {
@@ -75,6 +83,7 @@ class VoiceMeAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         hideOverlay()
+        stopDictationRecording()
         cancelServiceReadyNotification()
         super.onDestroy()
     }
@@ -97,7 +106,16 @@ class VoiceMeAccessibilityService : AccessibilityService() {
             setOnClickListener {
                 insertStubTranscriptIntoFocusedField()
             }
-            setOnTouchListener(OverlayDragTouchListener(windowManager))
+            setOnTouchListener(
+                OverlayDragTouchListener(
+                    windowManager = windowManager,
+                    density = resources.displayMetrics.density,
+                    onMoved = ::persistOverlayPosition,
+                    onDictationCommand = ::handleDictationCommand,
+                    interaction = { settingsStore.load().dictationInteraction },
+                    isRecording = { isDictationRecording },
+                ),
+            )
         }
 
         windowManager.addView(view, overlayLayoutParams())
@@ -105,6 +123,7 @@ class VoiceMeAccessibilityService : AccessibilityService() {
     }
 
     private fun hideOverlay() {
+        stopDictationRecording()
         overlayView?.let { view ->
             runCatching { windowManager.removeView(view) }
         }
@@ -155,6 +174,47 @@ class VoiceMeAccessibilityService : AccessibilityService() {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
     }
 
+    private fun persistOverlayPosition(position: OverlayPosition) {
+        val settings = settingsStore.load()
+        settingsStore.save(
+            settings.copy(
+                overlayOffsetXDp = position.xDp,
+                overlayOffsetYDp = position.yDp,
+            ),
+        )
+    }
+
+    private fun handleDictationCommand(command: DictationCommand) {
+        when (command) {
+            DictationCommand.None -> Unit
+            DictationCommand.StartRecording -> startDictationRecording()
+            DictationCommand.StopRecording -> stopDictationRecording()
+            DictationCommand.ToggleRecording -> if (isDictationRecording) {
+                stopDictationRecording()
+            } else {
+                startDictationRecording()
+            }
+        }
+    }
+
+    private fun startDictationRecording() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            showToast("Allow microphone in VoiceMe before dictating.")
+            isDictationRecording = false
+            return
+        }
+        ContextCompat.startForegroundService(
+            this,
+            VoiceMeRecordingService.startIntent(this),
+        )
+        isDictationRecording = true
+    }
+
+    private fun stopDictationRecording() {
+        stopService(VoiceMeRecordingService.stopIntent(this))
+        isDictationRecording = false
+    }
+
     private fun overlayLabel(detection: FocusedFieldDetection): String {
         val appLabel = detection.packageName?.substringAfterLast('.')?.takeIf { it.isNotBlank() }
         return if (appLabel == null) {
@@ -201,18 +261,25 @@ class VoiceMeAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun overlayLayoutParams(): WindowManager.LayoutParams = WindowManager.LayoutParams(
-        WindowManager.LayoutParams.WRAP_CONTENT,
-        WindowManager.LayoutParams.WRAP_CONTENT,
-        WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
-        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
-        PixelFormat.TRANSLUCENT,
-    ).apply {
-        gravity = Gravity.BOTTOM or Gravity.END
-        x = 32
-        y = 260
+    private fun overlayLayoutParams(): WindowManager.LayoutParams {
+        val settings = settingsStore.load()
+        val (overlayX, overlayY) = OverlayPlacementPolicy.toPx(
+            position = OverlayPosition(settings.overlayOffsetXDp, settings.overlayOffsetYDp),
+            density = resources.displayMetrics.density,
+        )
+        return WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.BOTTOM or Gravity.END
+            x = overlayX
+            y = overlayY
+        }
     }
 
     private fun AccessibilityEvent.isFocusRelevant(): Boolean = eventType == AccessibilityEvent.TYPE_VIEW_FOCUSED ||
@@ -241,6 +308,11 @@ class VoiceMeAccessibilityService : AccessibilityService() {
 
     private class OverlayDragTouchListener(
         private val windowManager: WindowManager,
+        private val density: Float,
+        private val onMoved: (OverlayPosition) -> Unit,
+        private val onDictationCommand: (DictationCommand) -> Unit,
+        private val interaction: () -> DictationInteraction,
+        private val isRecording: () -> Boolean,
     ) : View.OnTouchListener {
         private var startX = 0
         private var startY = 0
@@ -257,6 +329,12 @@ class VoiceMeAccessibilityService : AccessibilityService() {
                     downRawX = event.rawX
                     downRawY = event.rawY
                     dragging = false
+                    onDictationCommand(
+                        DictationInteractionController.onButtonDown(
+                            interaction = interaction(),
+                            isRecording = isRecording(),
+                        ),
+                    )
                     return false
                 }
 
@@ -276,6 +354,14 @@ class VoiceMeAccessibilityService : AccessibilityService() {
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     val wasDragging = dragging
                     dragging = false
+                    onMoved(OverlayPlacementPolicy.fromPx(params.x, params.y, density))
+                    onDictationCommand(
+                        DictationInteractionController.onButtonUp(
+                            interaction = interaction(),
+                            isRecording = isRecording(),
+                            wasDragging = wasDragging,
+                        ),
+                    )
                     return wasDragging
                 }
             }

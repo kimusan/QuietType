@@ -39,9 +39,6 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
         dictationState = dictationState.copy(hasMicrophonePermission = granted)
-        if (granted) {
-            startRecordingShell()
-        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

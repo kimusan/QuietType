@@ -24,3 +24,5 @@ The format follows Keep a Changelog principles, and versions should follow seman
 - Action-based onboarding buttons for Accessibility settings, microphone permission, and model setup, with “already enabled/allowed/ready” labels when setup is complete.
 - Status-screen overlay test field that lets users reliably focus an editable field and trigger the actual Accessibility floating button after enabling the service.
 - Accessibility service readiness notification and broader text/window event handling so the floating button is easier to surface in modern input fields.
+- Floating mic default placement now starts higher above the bottom edge, and dragged overlay position is saved locally for the next focused text field.
+- Overlay dictation interaction now owns the microphone only during active hold-to-talk or tap-to-toggle dictation instead of starting capture immediately after microphone permission is granted.
