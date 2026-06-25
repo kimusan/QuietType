@@ -1,6 +1,6 @@
-# VoiceMe
+# QuietType
 
-VoiceMe is an Android voice dictation app designed to stay out of the way until it is needed. When an editable field is active, VoiceMe provides a small Material You floating microphone control so users can dictate text into the current input without switching away from their normal workflow.
+QuietType is an Android voice dictation app designed to stay out of the way until it is needed. When an editable field is active, QuietType provides a small Material You floating microphone control so users can dictate text into the current input without switching away from their normal workflow.
 
 The long-term goal is private, near-real-time transcription that runs on-device using downloadable ASR models. The current default candidate is the sherpa-onnx Parakeet TDT v3 int8 multilingual pack, which includes Danish support; it is large, so compact fallback models remain available for benchmarking.
 
@@ -28,7 +28,7 @@ See `docs/ARCHITECTURE.md` for the current technical plan.
 
 ## Privacy posture
 
-VoiceMe is planned as a privacy-first app:
+QuietType is planned as a privacy-first app:
 
 - Audio and transcripts stay on-device during dictation.
 - No analytics or telemetry by default.
@@ -41,7 +41,7 @@ See `PRIVACY.md`, `docs/THREAT_MODEL.md`, and `docs/PERMISSIONS.md` for details.
 
 ## Installation
 
-VoiceMe is not released yet. Planned release channels:
+QuietType is not released yet. Planned release channels:
 
 - Signed APKs attached to GitHub Releases.
 - F-Droid-compatible flavor once the dependency/model packaging story is validated.
@@ -74,10 +74,10 @@ Release signing can be configured with an ignored root-level `keystore.propertie
 
 ## License
 
-VoiceMe is released under the MIT license.
+QuietType is released under the MIT license.
 
 ## Credits
 
-VoiceMe is designed and developed by Kim Schulz <kim@schulz.dk> with help from AI-assisted development.
+QuietType is designed and developed by Kim Schulz <kim@schulz.dk> with help from AI-assisted development.
 
-More information: https://github.com/kimusan/VoiceMe
+More information: https://github.com/kimusan/QuietType

@@ -1,4 +1,4 @@
-# VoiceMe UX, Onboarding, and Configuration Plan
+# QuietType UX, Onboarding, and Configuration Plan
 
 ## Design principles
 
@@ -19,7 +19,7 @@
    - User controls model downloads and local data.
 3. Choose mode
    - Recommended: floating button with normal keyboard, requiring Accessibility.
-   - Fallback: VoiceMe keyboard/IME, requiring keyboard enablement.
+   - Fallback: QuietType keyboard/IME, requiring keyboard enablement.
 4. Microphone setup
    - Explain why mic access is needed.
    - Request permission only when the user continues.
@@ -37,7 +37,7 @@
 ## Daily usage
 
 - User focuses an editable text field.
-- VoiceMe shows a small floating mic button near the keyboard area.
+- QuietType shows a small floating mic button near the keyboard area.
 - User holds the button to dictate, or taps to toggle if configured.
 - Button changes state using Material motion/color and haptic feedback.
 - Partial text appears where reliable; final text is committed after pause/endpoint.

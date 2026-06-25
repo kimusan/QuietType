@@ -15,7 +15,7 @@
         android:label="@string/app_name"
         android:roundIcon="@drawable/ic_launcher_foreground"
         android:supportsRtl="true"
-        android:theme="@style/Theme.VoiceMe">
+        android:theme="@style/Theme.QuietType">
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -26,12 +26,12 @@
         </activity>
 
         <service
-            android:name=".dictation.VoiceMeRecordingService"
+            android:name=".dictation.QuietTypeRecordingService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
 
         <service
-            android:name=".accessibility.VoiceMeAccessibilityService"
+            android:name=".accessibility.QuietTypeAccessibilityService"
             android:exported="true"
             android:label="@string/app_name"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
@@ -40,7 +40,7 @@
             </intent-filter>
             <meta-data
                 android:name="android.accessibilityservice"
-                android:resource="@xml/voiceme_accessibility_service" />
+                android:resource="@xml/quiettype_accessibility_service" />
         </service>
     </application>
 

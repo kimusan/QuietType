@@ -1,6 +1,6 @@
 # Changelog
 
-All notable user-facing changes to VoiceMe will be documented in this file.
+All notable user-facing changes to QuietType will be documented in this file.
 
 The format follows Keep a Changelog principles, and versions should follow semantic versioning where practical.
 

@@ -1,6 +1,6 @@
-# VoiceMe Privacy Policy
+# QuietType Privacy Policy
 
-VoiceMe is designed to be privacy-first. This document describes the intended privacy behavior for the app as it is developed. It must be updated before every public release.
+QuietType is designed to be privacy-first. This document describes the intended privacy behavior for the app as it is developed. It must be updated before every public release.
 
 ## Summary
 
@@ -12,19 +12,19 @@ VoiceMe is designed to be privacy-first. This document describes the intended pr
 
 ## Audio
 
-VoiceMe uses the microphone only while the user actively starts dictation. Hold-to-talk starts capture on press and stops on release; tap-to-toggle starts or stops capture on each non-drag tap. Granting microphone permission by itself does not start capture. Active dictation opens `AudioRecord` locally, feeds audio into the on-device sherpa-onnx recognizer, and shows a visible notification. The app does not persist raw audio unless a future feature explicitly asks for user consent and this policy is updated.
+QuietType uses the microphone only while the user actively starts dictation. Hold-to-talk starts capture on press and stops on release; tap-to-toggle starts or stops capture on each non-drag tap. Granting microphone permission by itself does not start capture. Active dictation opens `AudioRecord` locally, feeds audio into the on-device sherpa-onnx recognizer, and shows a visible notification. The app does not persist raw audio unless a future feature explicitly asks for user consent and this policy is updated.
 
 ## Transcripts
 
-Dictated text is inserted into the user's chosen input field. The Accessibility service receives final transcript broadcasts from the local dictation service and reads the focused node's existing text at insertion time so it can append the recognized text instead of overwriting the field. VoiceMe should not store transcript history by default. If transcript history is added later, it must be local-only, opt-in, and deletable from settings.
+Dictated text is inserted into the user's chosen input field. The Accessibility service receives final transcript broadcasts from the local dictation service and reads the focused node's existing text at insertion time so it can append the recognized text instead of overwriting the field. QuietType should not store transcript history by default. If transcript history is added later, it must be local-only, opt-in, and deletable from settings.
 
 ## Accessibility service
 
-VoiceMe includes an AccessibilityService registration so users can enable the keyboard-adjacent dictation mode from Android settings. This capability is needed to detect focused editable fields and place a mic control next to the normal keyboard. The service looks at accessibility metadata needed to decide whether a focused node is editable or password/sensitive. It reads the focused field text only when inserting an explicit final dictation result. It hides or disables the overlay for sensitive fields by default.
+QuietType includes an AccessibilityService registration so users can enable the keyboard-adjacent dictation mode from Android settings. This capability is needed to detect focused editable fields and place a mic control next to the normal keyboard. The service looks at accessibility metadata needed to decide whether a focused node is editable or password/sensitive. It reads the focused field text only when inserting an explicit final dictation result. It hides or disables the overlay for sensitive fields by default.
 
 ## Local preferences
 
-VoiceMe stores a small set of local preferences, such as onboarding completion and preview settings for dictation interaction, offline-only mode, sensitive-field behavior, selected model ID, and model install markers. These preferences stay in the app's private storage and Android backup is disabled for the app.
+QuietType stores a small set of local preferences, such as onboarding completion and preview settings for dictation interaction, offline-only mode, sensitive-field behavior, selected model ID, and model install markers. These preferences stay in the app's private storage and Android backup is disabled for the app.
 
 ## Model files
 
@@ -32,7 +32,7 @@ ASR models may be downloaded after the user chooses a model. The UI starts expli
 
 ## Network
 
-VoiceMe declares network access for explicit user-initiated model downloads. Network access is not used for cloud transcription, telemetry, or dictation. The offline/F-Droid flavor should avoid network access during dictation and may need a bundled-model or side-loaded-model path.
+QuietType declares network access for explicit user-initiated model downloads. Network access is not used for cloud transcription, telemetry, or dictation. The offline/F-Droid flavor should avoid network access during dictation and may need a bundled-model or side-loaded-model path.
 
 ## Diagnostics
 

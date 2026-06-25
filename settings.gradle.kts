@@ -14,5 +14,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "VoiceMe"
+rootProject.name = "QuietType"
 include(":app")

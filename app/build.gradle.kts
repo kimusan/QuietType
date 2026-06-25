@@ -19,11 +19,11 @@ val hasReleaseSigning = listOf(
 ).all { key -> keystoreProperties.getProperty(key).isNullOrBlank().not() }
 
 android {
-    namespace = "dk.schulz.voiceme"
+    namespace = "dk.schulz.quiettype"
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "dk.schulz.voiceme"
+        applicationId = "dk.schulz.quiettype"
         minSdk = 26
         targetSdk = 37
         versionCode = 1

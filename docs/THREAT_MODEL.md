@@ -1,4 +1,4 @@
-# VoiceMe Threat Model
+# QuietType Threat Model
 
 ## Assets
 
@@ -30,7 +30,7 @@
 ## Out of scope
 
 - Compromised/rooted operating systems.
-- Malicious keyboards or apps outside VoiceMe.
+- Malicious keyboards or apps outside QuietType.
 - Hardware microphone compromise.
 - Users intentionally pasting dictated text into third-party cloud apps.
 

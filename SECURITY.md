@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-VoiceMe has not shipped a public release yet. Security support policy will be updated before the first release.
+QuietType has not shipped a public release yet. Security support policy will be updated before the first release.
 
 ## Reporting a vulnerability
 

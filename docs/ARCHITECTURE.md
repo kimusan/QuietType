@@ -1,4 +1,4 @@
-# VoiceMe Architecture Plan
+# QuietType Architecture Plan
 
 ## Goal
 
@@ -6,15 +6,15 @@ Build a privacy-first Android dictation app that appears only when useful, captu
 
 ## Recommended architecture
 
-VoiceMe should use a shared core dictation pipeline with two Android integration modes.
+QuietType should use a shared core dictation pipeline with two Android integration modes.
 
 ### 1. Primary mode: accessibility overlay
 
-This is the only practical way to keep the user's normal keyboard active while displaying a VoiceMe microphone control beside it.
+This is the only practical way to keep the user's normal keyboard active while displaying a QuietType microphone control beside it.
 
 Components:
 
-- `VoiceMeAccessibilityService`
+- `QuietTypeAccessibilityService`
   - Watches focus/window events.
   - Tracks the currently focused editable node.
   - Shows the floating microphone button when text entry is active.
@@ -37,13 +37,13 @@ Tradeoffs:
 - Text insertion is less reliable than an IME in custom editors, webviews, and some chat apps.
 - Play Store policy risk must be handled by honest disclosure and possibly an IME-only Play flavor.
 
-### 2. Fallback mode: VoiceMe IME
+### 2. Fallback mode: QuietType IME
 
 An `InputMethodService` cannot appear alongside another keyboard, but it provides the most reliable text insertion API.
 
 Components:
 
-- Minimal VoiceMe keyboard/panel.
+- Minimal QuietType keyboard/panel.
 - Large mic button and basic text controls.
 - `InputConnection.setComposingText()` for partials.
 - `InputConnection.commitText()` for final text.

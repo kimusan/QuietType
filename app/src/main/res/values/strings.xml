@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">VoiceMe</string>
-    <string name="accessibility_service_description">Shows the future VoiceMe microphone control when editable text fields are focused. VoiceMe does not record audio or insert text in this preview build.</string>
+    <string name="app_name">QuietType</string>
+    <string name="accessibility_service_description">Shows the QuietType microphone control when editable text fields are focused, then inserts locally recognized dictation text after explicit user action.</string>
 </resources>
