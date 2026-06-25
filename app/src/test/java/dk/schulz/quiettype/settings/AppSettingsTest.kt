@@ -3,6 +3,7 @@ package dk.schulz.quiettype.settings
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import dk.schulz.quiettype.accessibility.HiddenFieldTarget
 import org.junit.Test
 
 class AppSettingsTest {
@@ -46,6 +47,7 @@ class AppSettingsTest {
             overlayOffsetXDp = 42,
             overlayOffsetYDp = 360,
             overlayColorPreset = OverlayColorPreset.Teal,
+            hiddenTargets = emptyList(),
         )
 
         val restored = AppSettingsCodec.decode(AppSettingsCodec.encode(original))
@@ -64,4 +66,22 @@ class AppSettingsTest {
         assertEquals(OverlayColorPreset.Purple, restored.overlayColorPreset)
     }
 
+
+    @Test
+    fun hiddenTargetsRoundTrip() {
+        val settings = AppSettings.default().copy(
+            hiddenTargets = listOf(
+                HiddenFieldTarget.forField(
+                    packageName = "com.example.notes",
+                    className = "com.example.notes.EditorActivity",
+                    viewIdResourceName = "com.example.notes:id/body",
+                    label = "Body",
+                ),
+            ),
+        )
+
+        val restored = AppSettingsCodec.decode(AppSettingsCodec.encode(settings))
+
+        assertEquals(settings.hiddenTargets, restored.hiddenTargets)
+    }
 }

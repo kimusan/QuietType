@@ -3,6 +3,7 @@ package dk.schulz.quiettype.accessibility
 import android.Manifest
 import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
+import android.app.AlertDialog
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.BroadcastReceiver
@@ -19,6 +20,7 @@ import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.ColorInt
@@ -40,6 +42,7 @@ class QuietTypeAccessibilityService : AccessibilityService() {
     private var isDictationRecording = false
     private var isDictationProcessing = false
     private var lastDetection: FocusedFieldDetection? = null
+    private var lastFocusedSnapshot: FocusedFieldSnapshot? = null
     private val dictationReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
@@ -98,6 +101,7 @@ class QuietTypeAccessibilityService : AccessibilityService() {
             } else {
                 hideOverlay()
                 lastDetection = null
+                lastFocusedSnapshot = null
             }
             return
         }
@@ -112,6 +116,7 @@ class QuietTypeAccessibilityService : AccessibilityService() {
                 settings = settingsStore.load(),
             )
             lastDetection = detection
+            lastFocusedSnapshot = snapshot
 
             if (detection.shouldShowOverlay) {
                 showOrUpdateOverlay(detection)
@@ -138,32 +143,55 @@ class QuietTypeAccessibilityService : AccessibilityService() {
     }
 
     private fun showOrUpdateOverlay(detection: FocusedFieldDetection) {
-        val existing = overlayView as? TextView
+        val existing = overlayView as? LinearLayout
         if (existing != null) {
             updateOverlayPresentation(existing, detection)
             return
         }
 
-        val view = TextView(this).apply {
-            textSize = 16f
-            setTextColor(0xFFFFFFFF.toInt())
-            setPadding(28, 18, 28, 18)
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
             elevation = 12f
+        }
+        val handle = overlayPart("☰").apply {
+            contentDescription = "Drag QuietType button"
+            setPadding(18, 18, 14, 18)
             setOnTouchListener(
-                OverlayDragTouchListener(
+                OverlayMoveTouchListener(
                     windowManager = windowManager,
                     density = resources.displayMetrics.density,
                     onMoved = ::persistOverlayPosition,
+                ),
+            )
+        }
+        val mic = overlayPart("").apply {
+            setPadding(20, 18, 20, 18)
+            setOnTouchListener(
+                OverlayDictationTouchListener(
                     onDictationCommand = ::handleDictationCommand,
                     interaction = { settingsStore.load().dictationInteraction },
                     isRecording = { isDictationRecording },
                 ),
             )
         }
-        updateOverlayPresentation(view, detection)
+        val hide = overlayPart("×").apply {
+            contentDescription = "Hide QuietType here"
+            setPadding(18, 18, 18, 18)
+            setOnClickListener { confirmHideCurrentTarget() }
+        }
+        container.addView(handle)
+        container.addView(mic)
+        container.addView(hide)
+        updateOverlayPresentation(container, detection)
 
-        windowManager.addView(view, overlayLayoutParams())
-        overlayView = view
+        windowManager.addView(container, overlayLayoutParams())
+        overlayView = container
+    }
+
+    private fun overlayPart(label: String): TextView = TextView(this).apply {
+        text = label
+        textSize = 16f
+        setTextColor(0xFFFFFFFF.toInt())
     }
 
     private fun hideOverlay() {
@@ -180,19 +208,49 @@ class QuietTypeAccessibilityService : AccessibilityService() {
 
     private fun keepActiveOverlayVisible() {
         val detection = lastDetection
-        val view = overlayView as? TextView
+        val view = overlayView as? LinearLayout
         if (detection != null && view != null) {
             updateOverlayPresentation(view, detection)
         }
     }
 
-    private fun updateOverlayPresentation(view: TextView, detection: FocusedFieldDetection) {
+    private fun updateOverlayPresentation(view: LinearLayout, detection: FocusedFieldDetection) {
         val state = currentOverlayState()
         val label = overlayLabel(detection, state)
         val colorPreset = settingsStore.load().overlayColorPreset
-        view.text = label
+        val color = overlayColorFor(state, colorPreset)
+        view.setBackgroundColor(color)
         view.contentDescription = label
-        view.setBackgroundColor(overlayColorFor(state, colorPreset))
+        (view.getChildAt(1) as? TextView)?.apply {
+            text = label
+            contentDescription = label
+        }
+    }
+
+    private fun confirmHideCurrentTarget() {
+        val target = lastFocusedSnapshot?.let(HiddenFieldTarget::bestFor)
+        if (target == null) {
+            showToast("QuietType cannot identify this field well enough to hide it.")
+            return
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Hide QuietType here?")
+            .setMessage(
+                "QuietType will stop showing the floating button for ${target.displayName}. " +
+                    "You can re-enable it from Settings.",
+            )
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Hide here") { _, _ ->
+                val settings = settingsStore.load()
+                if (settings.hiddenTargets.none { it == target }) {
+                    settingsStore.save(settings.copy(hiddenTargets = settings.hiddenTargets + target))
+                }
+                hideOverlay(stopRecording = true)
+                showToast("QuietType hidden for ${target.displayName}.")
+            }
+            .create()
+        dialog.window?.setType(WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY)
+        dialog.show()
     }
 
     private fun insertTranscriptIntoFocusedField(transcript: String) {
@@ -299,11 +357,8 @@ class QuietTypeAccessibilityService : AccessibilityService() {
         else -> OverlayDictationState.Idle
     }
 
-    private fun overlayLabel(detection: FocusedFieldDetection, state: OverlayDictationState): String =
-        QuietTypeAccessibilityPresentation.overlayLabel(
-            packageName = detection.packageName,
-            state = state,
-        )
+    private fun overlayLabel(@Suppress("UNUSED_PARAMETER") detection: FocusedFieldDetection, state: OverlayDictationState): String =
+        QuietTypeAccessibilityPresentation.overlayLabel(state = state)
 
     @SuppressLint("MissingPermission")
     private fun showServiceReadyNotification() {
@@ -380,6 +435,8 @@ class QuietTypeAccessibilityService : AccessibilityService() {
         isFocused = isFocused,
         isEditable = isEditable,
         isPassword = isPassword,
+        viewIdResourceName = viewIdResourceName,
+        hintText = hintText?.toString(),
     )
 
     companion object {
@@ -394,29 +451,51 @@ class QuietTypeAccessibilityService : AccessibilityService() {
         }
     }
 
-    private class OverlayDragTouchListener(
+    private class OverlayMoveTouchListener(
         private val windowManager: WindowManager,
         private val density: Float,
         private val onMoved: (OverlayPosition) -> Unit,
-        private val onDictationCommand: (DictationCommand) -> Unit,
-        private val interaction: () -> DictationInteraction,
-        private val isRecording: () -> Boolean,
     ) : View.OnTouchListener {
         private var startX = 0
         private var startY = 0
         private var downRawX = 0f
         private var downRawY = 0f
-        private var dragging = false
 
         override fun onTouch(view: View, event: MotionEvent): Boolean {
-            val params = view.layoutParams as? WindowManager.LayoutParams ?: return false
+            val params = (view.parent as? View)?.layoutParams as? WindowManager.LayoutParams ?: return false
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     startX = params.x
                     startY = params.y
                     downRawX = event.rawX
                     downRawY = event.rawY
-                    dragging = false
+                    return true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = (event.rawX - downRawX).toInt()
+                    val dy = (event.rawY - downRawY).toInt()
+                    params.x = (startX - dx).coerceAtLeast(0)
+                    params.y = (startY - dy).coerceAtLeast(0)
+                    windowManager.updateViewLayout(view.parent as View, params)
+                    return true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    onMoved(OverlayPlacementPolicy.fromPx(params.x, params.y, density))
+                    return true
+                }
+            }
+            return false
+        }
+    }
+
+    private class OverlayDictationTouchListener(
+        private val onDictationCommand: (DictationCommand) -> Unit,
+        private val interaction: () -> DictationInteraction,
+        private val isRecording: () -> Boolean,
+    ) : View.OnTouchListener {
+        override fun onTouch(view: View, event: MotionEvent): Boolean {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
                     onDictationCommand(
                         DictationInteractionController.onButtonDown(
                             interaction = interaction(),
@@ -425,35 +504,19 @@ class QuietTypeAccessibilityService : AccessibilityService() {
                     )
                     return true
                 }
-
-                MotionEvent.ACTION_MOVE -> {
-                    val dx = (event.rawX - downRawX).toInt()
-                    val dy = (event.rawY - downRawY).toInt()
-                    if (!dragging && kotlin.math.abs(dx) + kotlin.math.abs(dy) < 12) {
-                        return true
-                    }
-                    dragging = true
-                    params.x = (startX - dx).coerceAtLeast(0)
-                    params.y = (startY - dy).coerceAtLeast(0)
-                    windowManager.updateViewLayout(view, params)
-                    return true
-                }
-
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    val wasDragging = dragging
-                    dragging = false
-                    onMoved(OverlayPlacementPolicy.fromPx(params.x, params.y, density))
                     onDictationCommand(
                         DictationInteractionController.onButtonUp(
                             interaction = interaction(),
                             isRecording = isRecording(),
-                            wasDragging = wasDragging,
+                            wasDragging = false,
                         ),
                     )
                     return true
                 }
             }
-            return false
+            return true
         }
     }
+
 }

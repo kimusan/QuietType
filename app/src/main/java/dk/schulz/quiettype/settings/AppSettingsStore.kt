@@ -24,6 +24,8 @@ class AppSettingsStore(
             PreparedModelIds to preferences.getString(PreparedModelIds, null).orEmpty(),
             OverlayOffsetXDp to preferences.getString(OverlayOffsetXDp, null).orEmpty(),
             OverlayOffsetYDp to preferences.getString(OverlayOffsetYDp, null).orEmpty(),
+            OverlayColorPresetKey to preferences.getString(OverlayColorPresetKey, null).orEmpty(),
+            HiddenTargets to preferences.getString(HiddenTargets, null).orEmpty(),
         ).filterValues { it.isNotEmpty() },
     )
 
@@ -48,5 +50,7 @@ class AppSettingsStore(
         private const val PreparedModelIds = "preparedModelIds"
         private const val OverlayOffsetXDp = "overlayOffsetXDp"
         private const val OverlayOffsetYDp = "overlayOffsetYDp"
+        private const val OverlayColorPresetKey = "overlayColorPreset"
+        private const val HiddenTargets = "hiddenTargets"
     }
 }

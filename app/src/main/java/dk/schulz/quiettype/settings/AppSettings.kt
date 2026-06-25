@@ -1,5 +1,7 @@
 package dk.schulz.quiettype.settings
 
+import dk.schulz.quiettype.accessibility.HiddenFieldTarget
+import dk.schulz.quiettype.accessibility.HiddenFieldTargetScope
 import dk.schulz.quiettype.accessibility.OverlayPlacementPolicy
 import dk.schulz.quiettype.models.ModelCatalog
 
@@ -29,6 +31,7 @@ data class AppSettings(
     val overlayOffsetXDp: Int,
     val overlayOffsetYDp: Int,
     val overlayColorPreset: OverlayColorPreset,
+    val hiddenTargets: List<HiddenFieldTarget>,
 ) {
     fun completeOnboarding(): AppSettings = copy(onboardingComplete = true)
 
@@ -49,6 +52,7 @@ data class AppSettings(
             overlayOffsetXDp = OverlayPlacementPolicy.DefaultPosition.xDp,
             overlayOffsetYDp = OverlayPlacementPolicy.DefaultPosition.yDp,
             overlayColorPreset = OverlayColorPreset.Teal,
+            hiddenTargets = emptyList(),
         )
     }
 }
@@ -66,6 +70,7 @@ object AppSettingsCodec {
     private const val OverlayOffsetXDp = "overlayOffsetXDp"
     private const val OverlayOffsetYDp = "overlayOffsetYDp"
     private const val OverlayColorPresetKey = "overlayColorPreset"
+    private const val HiddenTargets = "hiddenTargets"
 
     fun encode(settings: AppSettings): Map<String, String> = mapOf(
         OnboardingComplete to settings.onboardingComplete.toString(),
@@ -80,6 +85,7 @@ object AppSettingsCodec {
         OverlayOffsetXDp to settings.overlayOffsetXDp.toString(),
         OverlayOffsetYDp to settings.overlayOffsetYDp.toString(),
         OverlayColorPresetKey to settings.overlayColorPreset.name,
+        HiddenTargets to encodeHiddenTargets(settings.hiddenTargets),
     )
 
     fun decode(values: Map<String, String>): AppSettings {
@@ -115,6 +121,8 @@ object AppSettingsCodec {
                 ?: defaults.overlayOffsetYDp,
             overlayColorPreset = values[OverlayColorPresetKey]?.let(::decodeOverlayColorPreset)
                 ?: defaults.overlayColorPreset,
+            hiddenTargets = values[HiddenTargets]?.let(::decodeHiddenTargets)
+                ?: defaults.hiddenTargets,
         )
     }
 
@@ -123,4 +131,30 @@ object AppSettingsCodec {
 
     private fun decodeOverlayColorPreset(value: String): OverlayColorPreset? =
         OverlayColorPreset.entries.firstOrNull { it.name == value }
+
+    private fun encodeHiddenTargets(targets: List<HiddenFieldTarget>): String = targets.joinToString("\n") { target ->
+        listOf(
+            target.scope.name,
+            target.packageName,
+            target.className.orEmpty(),
+            target.viewIdResourceName.orEmpty(),
+            target.label.orEmpty(),
+        ).joinToString("|") { it.replace("|", " ").replace("\n", " ") }
+    }
+
+    private fun decodeHiddenTargets(value: String): List<HiddenFieldTarget> = value.lines()
+        .mapNotNull { line ->
+            val parts = line.split('|')
+            if (parts.size < 2) return@mapNotNull null
+            val scope = HiddenFieldTargetScope.entries.firstOrNull { it.name == parts[0] } ?: return@mapNotNull null
+            val packageName = parts[1].takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            HiddenFieldTarget(
+                scope = scope,
+                packageName = packageName,
+                className = parts.getOrNull(2)?.takeIf { it.isNotBlank() },
+                viewIdResourceName = parts.getOrNull(3)?.takeIf { it.isNotBlank() },
+                label = parts.getOrNull(4)?.takeIf { it.isNotBlank() },
+            )
+        }
+
 }

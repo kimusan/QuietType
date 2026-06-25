@@ -16,14 +16,10 @@ object QuietTypeAccessibilityPresentation {
         "Accessibility service not enabled. Open Android Accessibility settings and enable QuietType."
     }
 
-    fun overlayLabel(packageName: String?, state: OverlayDictationState): String {
-        val prefix = when (state) {
-            OverlayDictationState.Idle -> "🎙 QuietType"
-            OverlayDictationState.Listening -> "● Listening"
-            OverlayDictationState.Processing -> "⏳ Thinking"
-        }
-        val appLabel = packageName?.substringAfterLast('.')?.takeIf { it.isNotBlank() }
-        return if (appLabel == null) prefix else "$prefix · $appLabel"
+    fun overlayLabel(state: OverlayDictationState): String = when (state) {
+        OverlayDictationState.Idle -> "🎙 QuietType"
+        OverlayDictationState.Listening -> "● Listening"
+        OverlayDictationState.Processing -> "⏳ Thinking"
     }
 
     fun stateAfterStopRequested(wasRecording: Boolean): OverlayDictationState = if (wasRecording) {

@@ -21,27 +21,18 @@ class QuietTypeAccessibilityPresentationTest {
     }
 
     @Test
-    fun overlayLabelShowsIdleListeningAndProcessingStateAndAppName() {
+    fun overlayLabelShowsOnlyDictationStateWithoutAppOrFieldName() {
         assertEquals(
-            "🎙 QuietType · notes",
-            QuietTypeAccessibilityPresentation.overlayLabel(
-                packageName = "com.example.notes",
-                state = OverlayDictationState.Idle,
-            ),
+            "🎙 QuietType",
+            QuietTypeAccessibilityPresentation.overlayLabel(state = OverlayDictationState.Idle),
         )
         assertEquals(
-            "● Listening · notes",
-            QuietTypeAccessibilityPresentation.overlayLabel(
-                packageName = "com.example.notes",
-                state = OverlayDictationState.Listening,
-            ),
+            "● Listening",
+            QuietTypeAccessibilityPresentation.overlayLabel(state = OverlayDictationState.Listening),
         )
         assertEquals(
-            "⏳ Thinking · notes",
-            QuietTypeAccessibilityPresentation.overlayLabel(
-                packageName = "com.example.notes",
-                state = OverlayDictationState.Processing,
-            ),
+            "⏳ Thinking",
+            QuietTypeAccessibilityPresentation.overlayLabel(state = OverlayDictationState.Processing),
         )
     }
 

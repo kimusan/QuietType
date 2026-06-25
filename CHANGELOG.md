@@ -13,6 +13,8 @@ The format follows Keep a Changelog principles, and versions should follow seman
 - Removed unimplemented transcript-history and sensitive-field toggles from the visible settings UI. Sensitive-field hiding remains enabled by default.
 - Removed unsupported benchmark-only models from the visible model catalog so every listed model is actionable.
 - Marked live insertion as experimental and added preset floating-button color choices.
+- Added a separate drag handle on the Accessibility floating control so repositioning does not trigger dictation.
+- Added a hide-here control with warning confirmation; hidden apps/screens/fields can be removed again from Settings.
 
 ### Added
 

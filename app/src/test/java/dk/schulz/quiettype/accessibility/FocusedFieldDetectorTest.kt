@@ -76,4 +76,56 @@ class FocusedFieldDetectorTest {
         assertFalse(detection.shouldShowOverlay)
         assertEquals(FocusedFieldHideReason.NotEditable, detection.hideReason)
     }
+
+    @Test
+    fun appHideRuleSuppressesOverlayForMatchingPackage() {
+        val detection = FocusedFieldDetector.detect(
+            snapshot = FocusedFieldSnapshot(
+                packageName = "com.example.notes",
+                className = "com.example.notes.EditorActivity",
+                viewIdResourceName = "com.example.notes:id/body",
+                hintText = "Body",
+                isFocused = true,
+                isEditable = true,
+                isPassword = false,
+            ),
+            settings = AppSettings.default().copy(
+                hiddenTargets = listOf(
+                    HiddenFieldTarget.forApp("com.example.notes"),
+                ),
+            ),
+        )
+
+        assertFalse(detection.shouldShowOverlay)
+        assertEquals(FocusedFieldHideReason.UserHiddenTarget, detection.hideReason)
+    }
+
+    @Test
+    fun fieldHideRuleDoesNotSuppressOtherFieldsInSameApp() {
+        val detection = FocusedFieldDetector.detect(
+            snapshot = FocusedFieldSnapshot(
+                packageName = "com.example.notes",
+                className = "com.example.notes.EditorActivity",
+                viewIdResourceName = "com.example.notes:id/body",
+                hintText = "Body",
+                isFocused = true,
+                isEditable = true,
+                isPassword = false,
+            ),
+            settings = AppSettings.default().copy(
+                hiddenTargets = listOf(
+                    HiddenFieldTarget.forField(
+                        packageName = "com.example.notes",
+                        className = "com.example.notes.EditorActivity",
+                        viewIdResourceName = "com.example.notes:id/title",
+                        label = "Title",
+                    ),
+                ),
+            ),
+        )
+
+        assertTrue(detection.shouldShowOverlay)
+        assertEquals(FocusedFieldHideReason.None, detection.hideReason)
+    }
+
 }

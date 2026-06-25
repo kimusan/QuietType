@@ -511,6 +511,51 @@ private fun QuietTypeSettingsPreview(
             }
         }
 
+        SettingsSectionCard(title = "Hidden fields and apps") {
+            Text(
+                text = "Use the × button on the floating control to hide QuietType for a detected app, screen, or field. Remove entries here to show it again.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            if (appSettings.hiddenTargets.isEmpty()) {
+                Text(
+                    text = "No hidden targets yet.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                appSettings.hiddenTargets.forEach { target ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = target.displayName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                text = "Scope: ${target.scope.label}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                onSettingsChange(
+                                    appSettings.copy(hiddenTargets = appSettings.hiddenTargets - target),
+                                )
+                            },
+                        ) {
+                            Text("Remove")
+                        }
+                    }
+                }
+            }
+        }
+
+
         SettingsSectionCard(title = "Floating button test") {
             Text(
                 text = QuietTypeAccessibilityPresentation.statusText(isAccessibilityEnabled),
