@@ -6,6 +6,14 @@ The format follows Keep a Changelog principles, and versions should follow seman
 
 ## Unreleased
 
+### Changed
+
+- Onboarding now blocks Continue/Finish until required setup tasks are complete: Accessibility service enabled, microphone permission allowed, and a dictation model prepared.
+- Removed the noisy Status page; Settings now contains the floating-button test field and Accessibility settings shortcut, and a new About page links to the project.
+- Removed unimplemented transcript-history and sensitive-field toggles from the visible settings UI. Sensitive-field hiding remains enabled by default.
+- Removed unsupported benchmark-only models from the visible model catalog so every listed model is actionable.
+- Marked live insertion as experimental and added preset floating-button color choices.
+
 ### Added
 
 - Initial product, architecture, privacy, permissions, UX, and release planning documents.

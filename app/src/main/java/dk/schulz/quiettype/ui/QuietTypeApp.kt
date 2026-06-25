@@ -2,7 +2,9 @@ package dk.schulz.quiettype.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -19,6 +21,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -49,6 +52,7 @@ import dk.schulz.quiettype.onboarding.OnboardingPermissionStatus
 import dk.schulz.quiettype.onboarding.OnboardingStep
 import dk.schulz.quiettype.settings.AppSettings
 import dk.schulz.quiettype.settings.DictationInteraction
+import dk.schulz.quiettype.settings.OverlayColorPreset
 import dk.schulz.quiettype.ui.theme.QuietTypeTheme
 
 @Composable
@@ -138,7 +142,7 @@ fun QuietTypeHomeScreen(
                 onSelectedSectionChange = { selectedSection = it },
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
             )
-            if (selectedSection == 3) {
+            if (selectedSection == 2) {
                 QuietTypeModelsScreen(
                     modelCatalogState = modelCatalogState,
                     modelDownloadStatus = modelDownloadStatus,
@@ -165,6 +169,8 @@ fun QuietTypeHomeScreen(
                             currentStep = currentStep,
                             totalSteps = onboardingFlow.totalSteps,
                             permissionStatus = onboardingPermissionStatus,
+                            canContinue = onboardingFlow.canContinueFrom(currentStep, onboardingPermissionStatus),
+                            blockedReason = onboardingFlow.blockedReason(currentStep, onboardingPermissionStatus),
                             onBack = { currentStep = onboardingFlow.previousIndex(currentStep) },
                             onNext = {
                                 if (currentStep == onboardingFlow.lastStepIndex) {
@@ -178,31 +184,24 @@ fun QuietTypeHomeScreen(
                                 when (action) {
                                     OnboardingAction.OpenAccessibilitySettings -> onOpenAccessibilitySettings()
                                     OnboardingAction.RequestMicrophonePermission -> onRequestMicrophonePermission()
-                                    OnboardingAction.OpenModels -> selectedSection = 3
+                                    OnboardingAction.OpenModels -> selectedSection = 2
                                     OnboardingAction.None -> Unit
                                 }
                             },
                         )
 
-                        1 -> QuietTypeStatusScreen(
+                        1 -> QuietTypeSettingsPreview(
                             appSettings = appSettings,
-                            dictationState = dictationState,
-                            modelCatalogState = modelCatalogState,
                             isAccessibilityEnabled = isAccessibilityEnabled,
-                            onReviewSetup = {
-                                currentStep = 0
-                                selectedSection = 0
-                            },
+                            dictationState = dictationState,
+                            onSettingsChange = onSettingsChange,
                             onOpenAccessibilitySettings = onOpenAccessibilitySettings,
                             onRequestMicrophonePermission = onRequestMicrophonePermission,
                             onStartRecordingShell = onStartRecordingShell,
                             onStopRecordingShell = onStopRecordingShell,
                         )
 
-                        else -> QuietTypeSettingsPreview(
-                            appSettings = appSettings,
-                            onSettingsChange = onSettingsChange,
-                        )
+                        else -> QuietTypeAboutScreen()
                     }
                 }
             }
@@ -220,7 +219,7 @@ private fun SectionChips(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        listOf("Setup", "Status", "Settings", "Models").forEachIndexed { index, label ->
+        listOf("Setup", "Settings", "Models", "About").forEachIndexed { index, label ->
             FilterChip(
                 selected = selectedSection == index,
                 onClick = { onSelectedSectionChange(index) },
@@ -236,6 +235,8 @@ private fun QuietTypeOnboardingScreen(
     currentStep: Int,
     totalSteps: Int,
     permissionStatus: OnboardingPermissionStatus,
+    canContinue: Boolean,
+    blockedReason: String?,
     onBack: () -> Unit,
     onNext: () -> Unit,
     onStepAction: (OnboardingAction) -> Unit,
@@ -448,7 +449,13 @@ private fun onboardingHelpText(step: OnboardingStep): String = when (step.action
 @Composable
 private fun QuietTypeSettingsPreview(
     appSettings: AppSettings,
+    isAccessibilityEnabled: Boolean,
+    dictationState: DictationSessionState,
     onSettingsChange: (AppSettings) -> Unit,
+    onOpenAccessibilitySettings: () -> Unit,
+    onRequestMicrophonePermission: () -> Unit,
+    onStartRecordingShell: () -> Unit,
+    onStopRecordingShell: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -472,8 +479,8 @@ private fun QuietTypeSettingsPreview(
             },
         )
         SettingSwitchCard(
-            title = "Live insertion",
-            body = "When the selected ASR runtime supports streaming, insert stable words or completed sentences while you speak. Offline Parakeet currently falls back to final insertion after stop.",
+            title = "Experimental live insertion",
+            body = "Insert stable words or phrases while a streaming recognizer is still listening. Experimental: offline Danish models still insert final text after stop.",
             checked = appSettings.liveSentenceInsertionEnabled,
             onCheckedChange = { enabled ->
                 onSettingsChange(appSettings.copy(liveSentenceInsertionEnabled = enabled))
@@ -487,18 +494,43 @@ private fun QuietTypeSettingsPreview(
                 onSettingsChange(appSettings.copy(offlineOnly = enabled))
             },
         )
-        SettingSwitchCard(
-            title = "Hide in sensitive fields",
-            body = "Planned behavior: pause or hide dictation for password and other sensitive input fields.",
-            checked = appSettings.hideInSensitiveFields,
-            onCheckedChange = { enabled ->
-                onSettingsChange(appSettings.copy(hideInSensitiveFields = enabled))
-            },
-        )
-        StatusCard(
-            title = "Transcript history locked off",
-            body = "Transcript history remains disabled in this build. A future release may expose it only as an explicit opt-in setting.",
-        )
+
+        SettingsSectionCard(title = "Floating button color") {
+            Text(
+                text = "Choose a preset color for the QuietType floating button. Listening still uses red so recording is obvious.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OverlayColorPreset.entries.forEach { preset ->
+                    FilterChip(
+                        selected = appSettings.overlayColorPreset == preset,
+                        onClick = { onSettingsChange(appSettings.copy(overlayColorPreset = preset)) },
+                        label = { Text(preset.displayName) },
+                    )
+                }
+            }
+        }
+
+        SettingsSectionCard(title = "Floating button test") {
+            Text(
+                text = QuietTypeAccessibilityPresentation.statusText(isAccessibilityEnabled),
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            OutlinedButton(onClick = onOpenAccessibilitySettings, modifier = Modifier.fillMaxWidth()) {
+                Text(if (isAccessibilityEnabled) "Accessibility settings" else "Enable Accessibility service")
+            }
+            if (!dictationState.hasMicrophonePermission) {
+                OutlinedButton(onClick = onRequestMicrophonePermission, modifier = Modifier.fillMaxWidth()) {
+                    Text("Allow microphone")
+                }
+            }
+            QuietTypeOverlayTestField(
+                dictationState = dictationState,
+                onStartRecordingShell = onStartRecordingShell,
+                onStopRecordingShell = onStopRecordingShell,
+            )
+        }
+
     }
 }
 
@@ -653,6 +685,67 @@ private fun StatusCard(
     }
 }
 
+
+@Composable
+private fun SettingsSectionCard(
+    title: String,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Card(modifier = modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            content()
+        }
+    }
+}
+
+@Composable
+private fun QuietTypeOverlayTestField(
+    dictationState: DictationSessionState,
+    onStartRecordingShell: () -> Unit,
+    onStopRecordingShell: () -> Unit,
+) {
+    var testText by rememberSaveable { mutableStateOf("") }
+    OutlinedTextField(
+        value = testText,
+        onValueChange = { testText = it },
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text("Floating button test field") },
+        placeholder = { Text("Tap here to show the Accessibility floating button") },
+    )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Button(
+            onClick = onStartRecordingShell,
+            enabled = dictationState.hasMicrophonePermission && !dictationState.isRecording,
+            modifier = Modifier.weight(1f),
+        ) {
+            Text("Start test")
+        }
+        OutlinedButton(
+            onClick = onStopRecordingShell,
+            enabled = dictationState.isRecording,
+            modifier = Modifier.weight(1f),
+        ) {
+            Text("Stop")
+        }
+    }
+    Text(
+        text = microphoneStatusText(dictationState),
+        style = MaterialTheme.typography.bodySmall,
+    )
+}
+
 @Composable
 private fun SettingSwitchCard(
     title: String,
@@ -697,6 +790,30 @@ private fun microphoneStatusText(state: DictationSessionState): String = when {
         "Microphone permission is required before local dictation can start."
     !state.hasMicrophonePermission -> "Microphone permission has not been granted yet."
     else -> "Microphone permission granted. Dictation is idle until you hold or toggle the mic button."
+}
+
+@Composable
+private fun QuietTypeAboutScreen(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        SettingsSectionCard(title = "About QuietType") {
+            Text(
+                text = "QuietType is a privacy-first Android dictation app by Kim Schulz. It stays out of the way until an editable field is focused, then offers a small floating microphone button for on-device dictation.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                text = "Project: https://github.com/kimusan/quiettype",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                text = "Current focus: reliable local ASR, clear onboarding, and transparent model downloads without telemetry or cloud transcription.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+    }
 }
 
 @Preview(showBackground = true)

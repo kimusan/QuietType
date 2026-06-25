@@ -45,6 +45,7 @@ class AppSettingsTest {
             preparedModelIds = setOf("sherpa-onnx-streaming-zipformer-en-int8"),
             overlayOffsetXDp = 42,
             overlayOffsetYDp = 360,
+            overlayColorPreset = OverlayColorPreset.Teal,
         )
 
         val restored = AppSettingsCodec.decode(AppSettingsCodec.encode(original))
@@ -53,4 +54,14 @@ class AppSettingsTest {
         assertFalse(AppSettingsCodec.decode(emptyMap()).transcriptHistoryEnabled)
         assertFalse(AppSettingsCodec.decode(emptyMap()).liveSentenceInsertionEnabled)
     }
+
+    @Test
+    fun defaultOverlayColorPresetIsPersisted() {
+        val settings = AppSettings.default().copy(overlayColorPreset = OverlayColorPreset.Purple)
+
+        val restored = AppSettingsCodec.decode(AppSettingsCodec.encode(settings))
+
+        assertEquals(OverlayColorPreset.Purple, restored.overlayColorPreset)
+    }
+
 }

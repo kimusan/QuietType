@@ -68,6 +68,30 @@ data class OnboardingFlow(
 
     fun previousIndex(index: Int): Int = (index - 1).coerceAtLeast(0)
 
+    fun indexOf(stepId: OnboardingStepId): Int = steps.indexOfFirst { it.id == stepId }.coerceAtLeast(0)
+
+    fun canContinueFrom(index: Int, status: OnboardingPermissionStatus): Boolean =
+        blockedReason(index, status) == null
+
+    fun blockedReason(index: Int, status: OnboardingPermissionStatus): String? = when (currentStep(index).id) {
+        OnboardingStepId.InteractionMode -> if (status.isAccessibilityEnabled) {
+            null
+        } else {
+            "Enable QuietType in Android Accessibility settings before continuing."
+        }
+        OnboardingStepId.Microphone -> if (status.hasMicrophonePermission) {
+            null
+        } else {
+            "Allow microphone access before continuing."
+        }
+        OnboardingStepId.OfflineModel -> if (status.isSelectedModelReady) {
+            null
+        } else {
+            "Download and prepare a dictation model before finishing setup."
+        }
+        else -> null
+    }
+
     fun isComplete(index: Int): Boolean = index >= totalSteps
 
     companion object {

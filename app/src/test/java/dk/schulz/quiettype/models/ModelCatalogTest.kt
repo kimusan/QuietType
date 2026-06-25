@@ -48,4 +48,14 @@ class ModelCatalogTest {
         assertFalse(deleted.isReadyForDictation)
         assertEquals(ModelInstallState.NotDownloaded, deleted.selectedInstallState)
     }
+
+    @Test
+    fun defaultCatalogOnlyContainsDownloadableUsableModels() {
+        val catalog = ModelCatalog.default()
+
+        assertTrue(catalog.models.isNotEmpty())
+        assertTrue(catalog.models.all { it.artifact.sha256.length == 64 })
+        assertTrue(catalog.models.none { it.runtime.kind == ModelRuntimeKind.UnsupportedMobileBenchmark })
+    }
+
 }

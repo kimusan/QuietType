@@ -1,7 +1,7 @@
 package dk.schulz.quiettype.models
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -22,12 +22,10 @@ class ModelCatalogParakeetTest {
     }
 
     @Test
-    fun fp32ParakeetIsListedAsUnsupportedForMobileRuntime() {
+    fun unsupportedFp32BenchmarkParakeetIsNotExposedInDefaultCatalog() {
         val fp32 = ModelCatalog.default().modelById("sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-fp32")
 
-        requireNotNull(fp32)
-        assertFalse(fp32.isOfflineCapable)
-        assertEquals(ModelRuntimeKind.UnsupportedMobileBenchmark, fp32.runtime.kind)
-        assertTrue(fp32.description.contains("not recommended"))
+        assertNull(fp32)
+        assertTrue(ModelCatalog.default().models.all { it.runtime.kind != ModelRuntimeKind.UnsupportedMobileBenchmark })
     }
 }

@@ -8,6 +8,14 @@ enum class DictationInteraction {
     TapToToggle,
 }
 
+enum class OverlayColorPreset(val displayName: String, val idleColor: Int, val listeningColor: Int) {
+    Teal("Teal", 0xFF00695C.toInt(), 0xFFC62828.toInt()),
+    Purple("Purple", 0xFF6A1B9A.toInt(), 0xFFC62828.toInt()),
+    Blue("Blue", 0xFF1565C0.toInt(), 0xFFC62828.toInt()),
+    Orange("Orange", 0xFFEF6C00.toInt(), 0xFFC62828.toInt()),
+    Pink("Pink", 0xFFC2185B.toInt(), 0xFFC62828.toInt()),
+}
+
 data class AppSettings(
     val onboardingComplete: Boolean,
     val dictationInteraction: DictationInteraction,
@@ -20,6 +28,7 @@ data class AppSettings(
     val preparedModelIds: Set<String>,
     val overlayOffsetXDp: Int,
     val overlayOffsetYDp: Int,
+    val overlayColorPreset: OverlayColorPreset,
 ) {
     fun completeOnboarding(): AppSettings = copy(onboardingComplete = true)
 
@@ -39,6 +48,7 @@ data class AppSettings(
             preparedModelIds = emptySet(),
             overlayOffsetXDp = OverlayPlacementPolicy.DefaultPosition.xDp,
             overlayOffsetYDp = OverlayPlacementPolicy.DefaultPosition.yDp,
+            overlayColorPreset = OverlayColorPreset.Teal,
         )
     }
 }
@@ -55,6 +65,7 @@ object AppSettingsCodec {
     private const val PreparedModelIds = "preparedModelIds"
     private const val OverlayOffsetXDp = "overlayOffsetXDp"
     private const val OverlayOffsetYDp = "overlayOffsetYDp"
+    private const val OverlayColorPresetKey = "overlayColorPreset"
 
     fun encode(settings: AppSettings): Map<String, String> = mapOf(
         OnboardingComplete to settings.onboardingComplete.toString(),
@@ -68,6 +79,7 @@ object AppSettingsCodec {
         PreparedModelIds to settings.preparedModelIds.sorted().joinToString(","),
         OverlayOffsetXDp to settings.overlayOffsetXDp.toString(),
         OverlayOffsetYDp to settings.overlayOffsetYDp.toString(),
+        OverlayColorPresetKey to settings.overlayColorPreset.name,
     )
 
     fun decode(values: Map<String, String>): AppSettings {
@@ -101,9 +113,14 @@ object AppSettingsCodec {
                 ?: defaults.overlayOffsetXDp,
             overlayOffsetYDp = values[OverlayOffsetYDp]?.toIntOrNull()?.coerceAtLeast(0)
                 ?: defaults.overlayOffsetYDp,
+            overlayColorPreset = values[OverlayColorPresetKey]?.let(::decodeOverlayColorPreset)
+                ?: defaults.overlayColorPreset,
         )
     }
 
     private fun decodeInteraction(value: String): DictationInteraction? =
         DictationInteraction.entries.firstOrNull { it.name == value }
+
+    private fun decodeOverlayColorPreset(value: String): OverlayColorPreset? =
+        OverlayColorPreset.entries.firstOrNull { it.name == value }
 }

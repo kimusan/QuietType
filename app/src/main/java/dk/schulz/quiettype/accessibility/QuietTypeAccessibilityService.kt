@@ -31,6 +31,7 @@ import dk.schulz.quiettype.dictation.DictationTranscriptContract
 import dk.schulz.quiettype.dictation.QuietTypeRecordingService
 import dk.schulz.quiettype.settings.AppSettingsStore
 import dk.schulz.quiettype.settings.DictationInteraction
+import dk.schulz.quiettype.settings.OverlayColorPreset
 
 class QuietTypeAccessibilityService : AccessibilityService() {
     private lateinit var settingsStore: AppSettingsStore
@@ -188,9 +189,10 @@ class QuietTypeAccessibilityService : AccessibilityService() {
     private fun updateOverlayPresentation(view: TextView, detection: FocusedFieldDetection) {
         val state = currentOverlayState()
         val label = overlayLabel(detection, state)
+        val colorPreset = settingsStore.load().overlayColorPreset
         view.text = label
         view.contentDescription = label
-        view.setBackgroundColor(if (state == OverlayDictationState.Listening) ListeningColor else IdleColor)
+        view.setBackgroundColor(overlayColorFor(state, colorPreset))
     }
 
     private fun insertTranscriptIntoFocusedField(transcript: String) {
@@ -383,8 +385,13 @@ class QuietTypeAccessibilityService : AccessibilityService() {
     companion object {
         private const val ServiceChannelId = "quiettype_accessibility"
         private const val ServiceNotificationId = 2001
-        @ColorInt private val IdleColor = 0xFF6750A4.toInt()
-        @ColorInt private val ListeningColor = 0xFFB3261E.toInt()
+
+        @ColorInt
+        private fun overlayColorFor(state: OverlayDictationState, preset: OverlayColorPreset): Int = when (state) {
+            OverlayDictationState.Listening -> preset.listeningColor
+            OverlayDictationState.Idle,
+            OverlayDictationState.Processing -> preset.idleColor
+        }
     }
 
     private class OverlayDragTouchListener(

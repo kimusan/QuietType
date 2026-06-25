@@ -115,26 +115,6 @@ data class ModelCatalog(
                         requiredFiles = listOf("encoder-epoch-99-avg-1.onnx", "decoder-epoch-99-avg-1.onnx", "joiner-epoch-99-avg-1.onnx", "tokens.txt"),
                     ),
                 ),
-                VoiceModel(
-                    id = "sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-fp32",
-                    name = "Parakeet TDT v3 fp32 benchmark",
-                    description = "High-accuracy fp32 Parakeet artifact is not recommended for mobile runtime: it is about 2.4 GiB unpacked and likely too memory-heavy for normal Android dictation.",
-                    engine = "sherpa-onnx / NeMo Parakeet TDT 0.6B v3 fp32",
-                    language = "Same 25-language set as v3 int8",
-                    sizeMegabytes = 2430,
-                    license = "CC-BY-4.0 model; Apache-2.0 sherpa-onnx runtime",
-                    artifact = ModelArtifact(
-                        url = "https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3",
-                        sha256 = "unsupported-mobile-benchmark",
-                        fileName = "sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-fp32",
-                        licenseUrl = "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3",
-                    ),
-                    isOfflineCapable = false,
-                    runtime = ModelRuntime(
-                        kind = ModelRuntimeKind.UnsupportedMobileBenchmark,
-                        requiredFiles = emptyList(),
-                    ),
-                ),
             ),
         )
     }
