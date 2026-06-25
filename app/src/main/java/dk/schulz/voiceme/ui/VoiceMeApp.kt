@@ -40,6 +40,7 @@ import dk.schulz.voiceme.dictation.DictationBlockReason
 import dk.schulz.voiceme.accessibility.VoiceMeAccessibilityPresentation
 import dk.schulz.voiceme.dictation.DictationSessionState
 import dk.schulz.voiceme.models.ModelCatalogState
+import dk.schulz.voiceme.models.ModelDownloadProgress
 import dk.schulz.voiceme.models.VoiceModel
 import dk.schulz.voiceme.onboarding.OnboardingAction
 import dk.schulz.voiceme.onboarding.OnboardingActionLabel
@@ -56,6 +57,7 @@ fun VoiceMeApp(
     dictationState: DictationSessionState = DictationSessionState.idle(hasMicrophonePermission = false),
     modelCatalogState: ModelCatalogState = ModelCatalogState.default(),
     modelDownloadStatus: String? = null,
+    modelDownloadProgress: ModelDownloadProgress? = null,
     isAccessibilityEnabled: Boolean = false,
     onSettingsChange: (AppSettings) -> Unit = {},
     onOpenAccessibilitySettings: () -> Unit = {},
@@ -72,6 +74,7 @@ fun VoiceMeApp(
             dictationState = dictationState,
             modelCatalogState = modelCatalogState,
             modelDownloadStatus = modelDownloadStatus,
+            modelDownloadProgress = modelDownloadProgress,
             isAccessibilityEnabled = isAccessibilityEnabled,
             onSettingsChange = onSettingsChange,
             onOpenAccessibilitySettings = onOpenAccessibilitySettings,
@@ -92,6 +95,7 @@ fun VoiceMeHomeScreen(
     dictationState: DictationSessionState,
     modelCatalogState: ModelCatalogState,
     modelDownloadStatus: String?,
+    modelDownloadProgress: ModelDownloadProgress?,
     isAccessibilityEnabled: Boolean,
     onSettingsChange: (AppSettings) -> Unit,
     onOpenAccessibilitySettings: () -> Unit,
@@ -182,6 +186,7 @@ fun VoiceMeHomeScreen(
                 else -> VoiceMeModelsScreen(
                     modelCatalogState = modelCatalogState,
                     modelDownloadStatus = modelDownloadStatus,
+                    modelDownloadProgress = modelDownloadProgress,
                     onSelectModel = onSelectModel,
                     onDownloadModel = onDownloadModel,
                     onDeleteModel = onDeleteModel,
@@ -315,7 +320,7 @@ private fun VoiceMeStatusScreen(
             textAlign = TextAlign.Center,
         )
         Text(
-            text = "The app shell is installed and interactive. When the Accessibility service is enabled, VoiceMe now detects focused editable fields and shows a draggable microphone preview overlay. Dictation, recording, and model downloads remain future milestones.",
+            text = "When the Accessibility service is enabled, VoiceMe detects focused editable fields and shows a draggable microphone overlay. Download a prepared local model, then hold or toggle the overlay button to dictate into the focused field.",
             style = MaterialTheme.typography.bodyLarge,
             textAlign = TextAlign.Center,
         )
@@ -335,7 +340,7 @@ private fun VoiceMeStatusScreen(
             },
         )
         StatusCard(
-            title = "Microphone shell",
+            title = "Microphone dictation",
             body = microphoneStatusText(dictationState),
         )
         Row(
@@ -351,7 +356,7 @@ private fun VoiceMeStatusScreen(
                 enabled = !dictationState.isRecording,
                 modifier = Modifier.weight(1f),
             ) {
-                Text(if (dictationState.hasMicrophonePermission) "Start mic shell" else "Allow microphone")
+                Text(if (dictationState.hasMicrophonePermission) "Start dictation" else "Allow microphone")
             }
             OutlinedButton(
                 onClick = onStopRecordingShell,
@@ -363,8 +368,8 @@ private fun VoiceMeStatusScreen(
         }
         if (dictationState.latestFinalTranscript.isNotBlank()) {
             StatusCard(
-                title = "ASR stub output",
-                body = "Latest final segment: ${dictationState.latestFinalTranscript}. The Accessibility overlay uses this same stub text for insertion testing.",
+                title = "Latest dictation output",
+                body = "Latest final segment: ${dictationState.latestFinalTranscript}.",
             )
         }
         StatusCard(
@@ -419,9 +424,9 @@ private fun onboardingHelpText(step: OnboardingStep): String = when (step.action
     OnboardingAction.OpenAccessibilitySettings ->
         "Android will open system settings. Choose VoiceMe, enable the service, then return here and use the Status screen test field to see the real floating button."
     OnboardingAction.RequestMicrophonePermission ->
-        "Android will show the microphone permission dialog now. If accepted, VoiceMe starts its local foreground recording shell so the permission path is exercised."
+        "Android will show the microphone permission dialog now. Accepting it only grants access; VoiceMe uses the microphone later when you hold or toggle the floating dictation button."
     OnboardingAction.OpenModels ->
-        "The Models screen shows the default multilingual model, checksum, size, and download action. Verified sherpa archives that contain model.int8.onnx and tokens.txt are now marked prepared for the ASR runtime adapter."
+        "The Models screen shows the default multilingual Parakeet model, checksum, size, and download action. Verified sherpa archives are unpacked into private runtime files and marked prepared for offline dictation."
     OnboardingAction.None ->
         "No permission is requested on this step. Continue when you are ready."
 }
@@ -479,6 +484,7 @@ private fun VoiceMeSettingsPreview(
 private fun VoiceMeModelsScreen(
     modelCatalogState: ModelCatalogState,
     modelDownloadStatus: String?,
+    modelDownloadProgress: ModelDownloadProgress?,
     onSelectModel: (String) -> Unit,
     onDownloadModel: (String) -> Unit,
     onDeleteModel: (String) -> Unit,
@@ -501,6 +507,27 @@ private fun VoiceMeModelsScreen(
                 title = "Model download status",
                 body = status,
             )
+        }
+        modelDownloadProgress?.let { progress ->
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                val fraction = progress.fraction
+                if (fraction != null) {
+                    LinearProgressIndicator(
+                        progress = { fraction },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+                Text(
+                    text = progress.percent?.let { "Download progress: $it%" } ?: "Download progress: receiving data…",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
         modelCatalogState.catalog.models.forEach { model ->
             val selected = model.id == modelCatalogState.selectedModel.id
@@ -624,11 +651,11 @@ private fun SettingSwitchCard(
 private fun yesNo(value: Boolean): String = if (value) "yes" else "no"
 
 private fun microphoneStatusText(state: DictationSessionState): String = when {
-    state.isRecording -> "Recording shell active with a foreground microphone notification. Audio capture is local and ASR is still stubbed."
+    state.isRecording -> "Local dictation is active with a foreground microphone notification. Audio capture stays on-device."
     !state.hasMicrophonePermission && state.blockReason == DictationBlockReason.MicrophonePermissionMissing ->
-        "Microphone permission is required before the foreground recording shell can start."
+        "Microphone permission is required before local dictation can start."
     !state.hasMicrophonePermission -> "Microphone permission has not been granted yet."
-    else -> "Microphone permission granted. Recording shell is idle."
+    else -> "Microphone permission granted. Dictation is idle until you hold or toggle the mic button."
 }
 
 @Preview(showBackground = true)
@@ -640,6 +667,7 @@ private fun VoiceMeHomeScreenPreview() {
             dictationState = DictationSessionState.idle(hasMicrophonePermission = false),
             modelCatalogState = ModelCatalogState.default(),
             modelDownloadStatus = null,
+            modelDownloadProgress = null,
             isAccessibilityEnabled = false,
             onSettingsChange = {},
             onOpenAccessibilitySettings = {},

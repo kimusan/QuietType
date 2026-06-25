@@ -7,16 +7,16 @@ import org.junit.Test
 
 class ModelCatalogTest {
     @Test
-    fun defaultCatalogProvidesCompactMultilingualOfflineModelFirst() {
+    fun defaultCatalogProvidesParakeetMultilingualOfflineModelFirst() {
         val catalog = ModelCatalog.default()
 
-        assertEquals("sherpa-onnx-nemo-fast-conformer-ctc-multilingual-int8", catalog.recommended.id)
+        assertEquals("sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8", catalog.recommended.id)
         assertTrue(catalog.recommended.isOfflineCapable)
-        assertTrue(catalog.recommended.language.contains("Danish", ignoreCase = true).not())
+        assertTrue(catalog.recommended.language.contains("Danish", ignoreCase = true))
         assertTrue(catalog.recommended.language.contains("English", ignoreCase = true))
         assertTrue(catalog.recommended.language.contains("German", ignoreCase = true))
         assertTrue(catalog.recommended.language.contains("Spanish", ignoreCase = true))
-        assertTrue(catalog.recommended.sizeMegabytes < 150)
+        assertTrue(catalog.recommended.sizeMegabytes < 600)
     }
 
     @Test

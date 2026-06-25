@@ -2,7 +2,7 @@
 
 VoiceMe is an Android voice dictation app designed to stay out of the way until it is needed. When an editable field is active, VoiceMe provides a small Material You floating microphone control so users can dictate text into the current input without switching away from their normal workflow.
 
-The long-term goal is private, near-real-time transcription that runs on-device using downloadable ASR models. The MVP will prioritize a reliable fully local model stack with a compact multilingual sherpa-onnx-compatible model as the default candidate. Parakeet-class models are still tracked as optional high-accuracy packs, but the small Parakeet artifacts found so far are English-only.
+The long-term goal is private, near-real-time transcription that runs on-device using downloadable ASR models. The current default candidate is the sherpa-onnx Parakeet TDT v3 int8 multilingual pack, which includes Danish support; it is large, so compact fallback models remain available for benchmarking.
 
 ## Product goals
 
@@ -21,8 +21,8 @@ The long-term goal is private, near-real-time transcription that runs on-device 
 - Accessibility overlay mode for the primary “works with your existing keyboard” experience.
 - Optional IME mode as a more reliable fallback for text insertion.
 - Foreground microphone service built around `AudioRecord`.
-- On-device ASR initially using sherpa-onnx with a compact multilingual int8 model candidate, plus separate runtime-readiness gates before any archive is treated as dictation-ready.
-- Optional later engines/model packs: Parakeet ONNX exports, whisper.cpp, and/or Vosk fallback.
+- On-device ASR using sherpa-onnx v1.13.3 with 16 KB-aligned arm64 native libraries, the Parakeet TDT v3 int8 multilingual pack as the default candidate, plus compact fallback models and runtime-readiness gates before any archive is treated as dictation-ready.
+- Optional later engines/model packs: fp32 Parakeet benchmark packs on capable devices, whisper.cpp, and/or Vosk fallback.
 
 See `docs/ARCHITECTURE.md` for the current technical plan.
 
@@ -48,7 +48,7 @@ VoiceMe is not released yet. Planned release channels:
 
 ## Development status
 
-The project has an Android/Kotlin/Compose prototype with interactive Material 3 setup, status, settings, and local-model screens. Onboarding/settings/model choices are persisted locally. The app can request microphone permission and start a foreground `AudioRecord` shell with a visible notification, but no ASR model is connected yet. When the user enables the Accessibility service, VoiceMe detects focused editable fields, shows a draggable microphone overlay, and can insert a fixed ASR-stub phrase into the focused field for end-to-end insertion testing. The Models screen starts explicit HTTPS model downloads, verifies SHA-256 before storing a downloaded archive marker, and deletes private model files. The compact sherpa-onnx English streaming archive is locked to a real GitHub release URL and SHA-256 checksum, but the app deliberately does not mark downloaded archives as dictation-ready until ASR runtime extraction/preparation is implemented and tested. It is still not public-release-ready: streaming transcription and production text-insertion safeguards remain future work. A local-only `ROADMAP.md` file may exist in developer checkouts and is intentionally ignored by git. Tracked planning and release documents live under `docs/`.
+The project has an Android/Kotlin/Compose prototype with interactive Material 3 setup, status, settings, and local-model screens. Onboarding/settings/model choices are persisted locally. The app can download and verify sherpa-onnx model archives with a Material progress bar and percentage text, unpack prepared runtime files, start a foreground local `AudioRecord` + sherpa-onnx dictation session from the floating overlay, and broadcast final transcripts back to the Accessibility service for focused-field insertion. The Models screen starts explicit HTTPS model downloads, verifies SHA-256 before storing a downloaded/prepared marker, and deletes private model files. The default Parakeet TDT v3 int8 archive is locked to a real GitHub release URL and SHA-256 checksum. It is still not public-release-ready: streaming partial insertion and production text-insertion safeguards remain future work. A local-only `ROADMAP.md` file may exist in developer checkouts and is intentionally ignored by git. Tracked planning and release documents live under `docs/`.
 
 ## Build from source
 

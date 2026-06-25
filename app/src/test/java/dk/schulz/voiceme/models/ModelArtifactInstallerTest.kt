@@ -19,13 +19,15 @@ class ModelArtifactInstallerTest {
 
     @Test
     fun installerWritesVerifiedArtifactIntoModelPrivateDirectory() {
+        val modelBytes = "VoiceMe model bytes".encodeToByteArray()
         val model = ModelCatalog.default().recommended.copy(
             artifact = ModelCatalog.default().recommended.artifact.copy(
-                sha256 = "20412ad7c4f447e06bad86425bdd146b1bb05d80049d925c39ac17767a5b34dc",
+                sha256 = modelBytes.sha256Hex(),
+                fileName = "fake-model.bin",
             ),
         )
         val installer = ModelArtifactInstaller(
-            byteSource = FakeArtifactByteSource("VoiceMe model bytes".encodeToByteArray()),
+            byteSource = FakeArtifactByteSource(modelBytes),
             modelRootDirectory = temporaryFolder.root,
         )
 
@@ -63,8 +65,9 @@ class ModelArtifactInstallerTest {
             "sherpa-onnx/model.int8.onnx" to "fake onnx".encodeToByteArray(),
             "sherpa-onnx/tokens.txt" to "<blk>\na\nb\n".encodeToByteArray(),
         )
-        val model = ModelCatalog.default().recommended.copy(
-            artifact = ModelCatalog.default().recommended.artifact.copy(
+        val ctcModel = ModelCatalog.default().modelById("sherpa-onnx-nemo-fast-conformer-ctc-multilingual-int8")!!
+        val model = ctcModel.copy(
+            artifact = ctcModel.artifact.copy(
                 sha256 = archiveBytes.sha256Hex(),
             ),
         )
@@ -85,8 +88,9 @@ class ModelArtifactInstallerTest {
         val archiveBytes = modelArchiveBytes(
             "sherpa-onnx/model.int8.onnx" to "fake onnx".encodeToByteArray(),
         )
-        val model = ModelCatalog.default().recommended.copy(
-            artifact = ModelCatalog.default().recommended.artifact.copy(
+        val ctcModel = ModelCatalog.default().modelById("sherpa-onnx-nemo-fast-conformer-ctc-multilingual-int8")!!
+        val model = ctcModel.copy(
+            artifact = ctcModel.artifact.copy(
                 sha256 = archiveBytes.sha256Hex(),
             ),
         )
@@ -103,14 +107,89 @@ class ModelArtifactInstallerTest {
     }
 
     @Test
-    fun deleteRemovesInstalledModelDirectory() {
+    fun installerExtractsVerifiedArchiveIntoRuntimeDirectoryWhenRequiredFilesArePresent() {
+        val archiveBytes = modelArchiveBytes(
+            "sherpa-onnx/encoder.int8.onnx" to "fake encoder".encodeToByteArray(),
+            "sherpa-onnx/decoder.int8.onnx" to "fake decoder".encodeToByteArray(),
+            "sherpa-onnx/joiner.int8.onnx" to "fake joiner".encodeToByteArray(),
+            "sherpa-onnx/tokens.txt" to "<blk>\na\nb\n".encodeToByteArray(),
+        )
         val model = ModelCatalog.default().recommended.copy(
             artifact = ModelCatalog.default().recommended.artifact.copy(
-                sha256 = "20412ad7c4f447e06bad86425bdd146b1bb05d80049d925c39ac17767a5b34dc",
+                sha256 = archiveBytes.sha256Hex(),
             ),
         )
         val installer = ModelArtifactInstaller(
-            byteSource = FakeArtifactByteSource("VoiceMe model bytes".encodeToByteArray()),
+            byteSource = FakeArtifactByteSource(archiveBytes),
+            modelRootDirectory = temporaryFolder.root,
+        )
+
+        val result = installer.install(model)
+
+        assertTrue(result is ModelArtifactInstallResult.Installed)
+        result as ModelArtifactInstallResult.Installed
+        assertEquals(ModelInstallState.PreparedForDictation, result.installState)
+        assertTrue(result.runtimeDirectory.resolve("encoder.int8.onnx").exists())
+        assertTrue(result.runtimeDirectory.resolve("decoder.int8.onnx").exists())
+        assertTrue(result.runtimeDirectory.resolve("joiner.int8.onnx").exists())
+        assertTrue(result.runtimeDirectory.resolve("tokens.txt").exists())
+    }
+
+    @Test
+    fun installerRejectsArchiveEntriesThatEscapeRuntimeDirectory() {
+        val archiveBytes = modelArchiveBytes(
+            "../escape.txt" to "bad".encodeToByteArray(),
+            "sherpa-onnx/encoder.int8.onnx" to "fake encoder".encodeToByteArray(),
+        )
+        val model = ModelCatalog.default().recommended.copy(
+            artifact = ModelCatalog.default().recommended.artifact.copy(
+                sha256 = archiveBytes.sha256Hex(),
+            ),
+        )
+        val installer = ModelArtifactInstaller(
+            byteSource = FakeArtifactByteSource(archiveBytes),
+            modelRootDirectory = temporaryFolder.root,
+        )
+
+        val result = installer.install(model)
+
+        assertTrue(result is ModelArtifactInstallResult.InstallFailed)
+        assertFalse(temporaryFolder.root.resolve("escape.txt").exists())
+    }
+
+    @Test
+    fun installerReportsByteProgressWhileDownloading() {
+        val modelBytes = "1234567890".encodeToByteArray()
+        val model = ModelCatalog.default().recommended.copy(
+            artifact = ModelCatalog.default().recommended.artifact.copy(
+                sha256 = modelBytes.sha256Hex(),
+                fileName = "fake-model.bin",
+            ),
+        )
+        val installer = ModelArtifactInstaller(
+            byteSource = FakeArtifactByteSource(modelBytes, chunkSize = 5),
+            modelRootDirectory = temporaryFolder.newFolder("models"),
+        )
+        val progressEvents = mutableListOf<ModelDownloadProgress>()
+
+        val result = installer.install(model, onProgress = progressEvents::add)
+
+        assertTrue(result is ModelArtifactInstallResult.Installed)
+        assertEquals(listOf(50, 100), progressEvents.map { it.percent })
+        assertEquals(listOf(5L, 10L), progressEvents.map { it.bytesRead })
+    }
+
+    @Test
+    fun deleteRemovesInstalledModelDirectory() {
+        val modelBytes = "VoiceMe model bytes".encodeToByteArray()
+        val model = ModelCatalog.default().recommended.copy(
+            artifact = ModelCatalog.default().recommended.artifact.copy(
+                sha256 = modelBytes.sha256Hex(),
+                fileName = "fake-model.bin",
+            ),
+        )
+        val installer = ModelArtifactInstaller(
+            byteSource = FakeArtifactByteSource(modelBytes),
             modelRootDirectory = temporaryFolder.root,
         )
         val installed = installer.install(model)
@@ -143,7 +222,17 @@ class ModelArtifactInstallerTest {
 
     private class FakeArtifactByteSource(
         private val bytes: ByteArray,
+        private val chunkSize: Int = bytes.size.coerceAtLeast(1),
     ) : ArtifactByteSource {
-        override fun open(artifact: ModelArtifact): InputStream = ByteArrayInputStream(bytes)
+        override fun open(artifact: ModelArtifact): ArtifactDownloadStream = ArtifactDownloadStream(
+            inputStream = object : ByteArrayInputStream(bytes) {
+                override fun read(buffer: ByteArray, offset: Int, length: Int): Int = super.read(
+                    buffer,
+                    offset,
+                    length.coerceAtMost(chunkSize),
+                )
+            },
+            totalBytes = bytes.size.toLong(),
+        )
     }
 }

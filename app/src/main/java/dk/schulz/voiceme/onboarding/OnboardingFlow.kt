@@ -98,7 +98,7 @@ data class OnboardingFlow(
                     id = OnboardingStepId.Microphone,
                     eyebrow = "Step 4 of 5",
                     title = "Allow microphone access.",
-                    body = "VoiceMe asks for microphone access only when you explicitly tap this step. Audio capture is local; the current build starts a foreground recording shell and does not send audio to the cloud.",
+                    body = "VoiceMe asks for microphone access only when you explicitly tap this step. Audio capture is local and starts later only while you hold or toggle the floating dictation button.",
                     action = OnboardingAction.RequestMicrophonePermission,
                     actionLabel = "Allow microphone",
                 ),

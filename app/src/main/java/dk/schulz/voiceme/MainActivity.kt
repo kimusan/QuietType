@@ -22,6 +22,7 @@ import dk.schulz.voiceme.models.ModelArtifactInstallResult
 import dk.schulz.voiceme.models.ModelArtifactInstaller
 import dk.schulz.voiceme.models.ModelCatalogReducer
 import dk.schulz.voiceme.models.ModelCatalogState
+import dk.schulz.voiceme.models.ModelDownloadProgress
 import dk.schulz.voiceme.models.ModelInstallState
 import dk.schulz.voiceme.settings.AppSettings
 import dk.schulz.voiceme.settings.AppSettingsStore
@@ -34,6 +35,7 @@ class MainActivity : ComponentActivity() {
     )
     private var isAccessibilityEnabled by mutableStateOf(false)
     private var modelDownloadStatus by mutableStateOf<String?>(null)
+    private var modelDownloadProgress by mutableStateOf<ModelDownloadProgress?>(null)
 
     private val microphonePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -60,6 +62,7 @@ class MainActivity : ComponentActivity() {
                 dictationState = dictationState,
                 modelCatalogState = modelCatalogState(),
                 modelDownloadStatus = modelDownloadStatus,
+                modelDownloadProgress = modelDownloadProgress,
                 isAccessibilityEnabled = isAccessibilityEnabled,
                 onSettingsChange = ::saveSettings,
                 onOpenAccessibilitySettings = {
@@ -92,6 +95,7 @@ class MainActivity : ComponentActivity() {
                         ).delete(model)
                     }
                     modelDownloadStatus = "Deleted local files for $modelId."
+                    modelDownloadProgress = null
                     val updated = ModelCatalogReducer.deleteModel(modelCatalogState(), modelId)
                     saveSettings(
                         appSettings.copy(
@@ -114,10 +118,15 @@ class MainActivity : ComponentActivity() {
             dictationState.copy(hasMicrophonePermission = hasMicrophonePermission()),
         )
         if (dictationState.isRecording) {
-            ContextCompat.startForegroundService(
-                this,
-                VoiceMeRecordingService.startIntent(this),
-            )
+            runCatching {
+                ContextCompat.startForegroundService(
+                    this,
+                    VoiceMeRecordingService.startIntent(this),
+                )
+            }.onFailure { error ->
+                dictationState = DictationSessionReducer.stopRecording(dictationState)
+                modelDownloadStatus = "VoiceMe could not start dictation: ${error.message ?: error::class.java.simpleName}."
+            }
         }
     }
 
@@ -159,20 +168,32 @@ class MainActivity : ComponentActivity() {
         onSettingsReady: (AppSettings) -> Unit,
     ) {
         val model = modelCatalogState().catalog.modelById(modelId) ?: return
-        modelDownloadStatus = "Downloading ${model.name}…"
+        modelDownloadStatus = "Starting download for ${model.name}…"
+        modelDownloadProgress = ModelDownloadProgress(
+            modelId = model.id,
+            bytesRead = 0L,
+            totalBytes = model.sizeMegabytes.toLong() * 1024L * 1024L,
+        )
         Thread {
             val result = runCatching {
                 ModelArtifactInstaller(
                     modelRootDirectory = filesDir.resolve("models"),
-                ).install(model)
+                ).install(model) { progress ->
+                    runOnUiThread {
+                        modelDownloadProgress = progress
+                        modelDownloadStatus = progress.label(model.name)
+                    }
+                }
             }.getOrElse { error ->
                 runOnUiThread {
+                    modelDownloadProgress = null
                     modelDownloadStatus = "Download failed for ${model.name}: ${error.message ?: error::class.java.simpleName}."
                 }
                 return@Thread
             }
 
             runOnUiThread {
+                modelDownloadProgress = null
                 when (result) {
                     is ModelArtifactInstallResult.Installed -> {
                         val currentState = modelCatalogState()
@@ -183,7 +204,7 @@ class MainActivity : ComponentActivity() {
                             downloaded
                         }
                         modelDownloadStatus = if (result.installState == ModelInstallState.PreparedForDictation) {
-                            "Verified and prepared ${model.name}. The model files are ready for the ASR runtime adapter."
+                            "Verified and prepared ${model.name}. VoiceMe can use it for offline dictation."
                         } else {
                             "Verified and stored ${model.name}. Runtime preparation is still required before dictation."
                         }
@@ -198,6 +219,10 @@ class MainActivity : ComponentActivity() {
 
                     is ModelArtifactInstallResult.ChecksumMismatch -> {
                         modelDownloadStatus = "Checksum mismatch for ${model.name}; deleted the downloaded file and did not mark it downloaded."
+                    }
+
+                    is ModelArtifactInstallResult.InstallFailed -> {
+                        modelDownloadStatus = "Could not prepare ${model.name}: ${result.reason}."
                     }
                 }
             }

@@ -12,15 +12,15 @@ VoiceMe is designed to be privacy-first. This document describes the intended pr
 
 ## Audio
 
-VoiceMe uses the microphone only while the user actively starts dictation. The current prototype starts the foreground microphone shell from the floating overlay interaction: hold-to-talk starts capture on press and stops on release, while tap-to-toggle starts or stops capture on each non-drag tap. Granting microphone permission by itself does not start capture. The foreground shell opens `AudioRecord` locally and shows a visible notification, but no ASR engine is connected yet. Future builds will stream audio to the local ASR engine running on the device. The app should not persist raw audio unless a future feature explicitly asks for user consent and this policy is updated.
+VoiceMe uses the microphone only while the user actively starts dictation. Hold-to-talk starts capture on press and stops on release; tap-to-toggle starts or stops capture on each non-drag tap. Granting microphone permission by itself does not start capture. Active dictation opens `AudioRecord` locally, feeds audio into the on-device sherpa-onnx recognizer, and shows a visible notification. The app does not persist raw audio unless a future feature explicitly asks for user consent and this policy is updated.
 
 ## Transcripts
 
-Dictated text is inserted into the user's chosen input field. The current Accessibility overlay inserts only a fixed test phrase (`VoiceMe dictation test`) when the user taps the preview overlay; this is an insertion prototype, not real speech transcription. To append the test phrase, the service reads the focused node's existing text at the moment of the explicit tap. VoiceMe should not store transcript history by default. If transcript history is added later, it must be local-only, opt-in, and deletable from settings.
+Dictated text is inserted into the user's chosen input field. The Accessibility service receives final transcript broadcasts from the local dictation service and reads the focused node's existing text at insertion time so it can append the recognized text instead of overwriting the field. VoiceMe should not store transcript history by default. If transcript history is added later, it must be local-only, opt-in, and deletable from settings.
 
 ## Accessibility service
 
-VoiceMe includes an AccessibilityService registration so users can enable the keyboard-adjacent dictation mode from Android settings. This capability is needed to detect focused editable fields and place a mic control next to the normal keyboard. The service looks at accessibility metadata needed to decide whether a focused node is editable or password/sensitive. It reads the focused field text only after the user explicitly taps the overlay insertion prototype so it can append the fixed ASR-stub phrase instead of overwriting the field. The preview overlay does not run real speech transcription yet.
+VoiceMe includes an AccessibilityService registration so users can enable the keyboard-adjacent dictation mode from Android settings. This capability is needed to detect focused editable fields and place a mic control next to the normal keyboard. The service looks at accessibility metadata needed to decide whether a focused node is editable or password/sensitive. It reads the focused field text only when inserting an explicit final dictation result. It hides or disables the overlay for sensitive fields by default.
 
 ## Local preferences
 
@@ -28,7 +28,7 @@ VoiceMe stores a small set of local preferences, such as onboarding completion a
 
 ## Model files
 
-ASR models may be downloaded after the user chooses a model. The current UI starts explicit HTTPS model downloads, verifies the artifact SHA-256 before storing a downloaded-archive marker, writes verified artifacts under the app's private `filesDir/models/` directory, and deletes those private files when the user deletes a model. The default compact multilingual sherpa-onnx NeMo/FastConformer CTC int8 archive is locked to a real GitHub release URL and SHA-256 checksum; it covers Belarusian, Croatian, English, French, German, Italian, Polish, Russian, Spanish, and Ukrainian, but not Danish. Verified `.tar.bz2` sherpa archives are marked prepared only when the archive contains the runtime-required `model.int8.onnx` and `tokens.txt` entries. Model licenses and approximate sizes must be shown before download.
+ASR models may be downloaded after the user chooses a model. The UI starts explicit HTTPS model downloads, verifies the artifact SHA-256 before storing a downloaded/prepared marker, writes verified artifacts under the app's private `filesDir/models/` directory, unpacks runtime files into a private `runtime/` directory, and deletes those private files when the user deletes a model. The default sherpa-onnx Parakeet TDT v3 int8 archive is locked to a real GitHub release URL and SHA-256 checksum; it supports Danish and other European languages but is a large download. Model licenses and approximate sizes must be shown before download.
 
 ## Network
 

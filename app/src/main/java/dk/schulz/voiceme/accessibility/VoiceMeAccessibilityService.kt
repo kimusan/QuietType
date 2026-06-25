@@ -5,6 +5,10 @@ import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.PixelFormat
 import android.os.Build
@@ -22,6 +26,7 @@ import androidx.core.content.ContextCompat
 import dk.schulz.voiceme.R
 import dk.schulz.voiceme.dictation.DictationCommand
 import dk.schulz.voiceme.dictation.DictationInteractionController
+import dk.schulz.voiceme.dictation.DictationTranscriptContract
 import dk.schulz.voiceme.dictation.VoiceMeRecordingService
 import dk.schulz.voiceme.settings.AppSettingsStore
 import dk.schulz.voiceme.settings.DictationInteraction
@@ -32,11 +37,26 @@ class VoiceMeAccessibilityService : AccessibilityService() {
     private var overlayView: View? = null
     private var isDictationRecording = false
     private var lastDetection: FocusedFieldDetection? = null
+    private val transcriptReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != DictationTranscriptContract.ActionFinalTranscript) return
+            val transcript = DictationTranscriptContract.cleanFinalTranscript(
+                intent.getStringExtra(DictationTranscriptContract.ExtraTranscript),
+            ) ?: return
+            insertTranscriptIntoFocusedField(transcript)
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
         settingsStore = AppSettingsStore(this)
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        ContextCompat.registerReceiver(
+            this,
+            transcriptReceiver,
+            IntentFilter(DictationTranscriptContract.ActionFinalTranscript),
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
     }
 
     override fun onServiceConnected() {
@@ -84,6 +104,7 @@ class VoiceMeAccessibilityService : AccessibilityService() {
     override fun onDestroy() {
         hideOverlay()
         stopDictationRecording()
+        runCatching { unregisterReceiver(transcriptReceiver) }
         cancelServiceReadyNotification()
         super.onDestroy()
     }
@@ -102,10 +123,7 @@ class VoiceMeAccessibilityService : AccessibilityService() {
             setBackgroundColor(0xFF6750A4.toInt())
             setPadding(28, 18, 28, 18)
             elevation = 12f
-            contentDescription = "VoiceMe dictation preview button"
-            setOnClickListener {
-                insertStubTranscriptIntoFocusedField()
-            }
+            contentDescription = "VoiceMe dictation button"
             setOnTouchListener(
                 OverlayDragTouchListener(
                     windowManager = windowManager,
@@ -130,7 +148,7 @@ class VoiceMeAccessibilityService : AccessibilityService() {
         overlayView = null
     }
 
-    private fun insertStubTranscriptIntoFocusedField() {
+    private fun insertTranscriptIntoFocusedField(transcript: String) {
         val focusedNode = rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
         if (focusedNode == null) {
             showToast("No editable text field is focused.")
@@ -146,7 +164,7 @@ class VoiceMeAccessibilityService : AccessibilityService() {
                 TextInsertionRequest(
                     focusedField = snapshot,
                     existingText = focusedNode.text?.toString().orEmpty(),
-                    transcript = "VoiceMe dictation test",
+                    transcript = transcript,
                 ),
             )
             if (!draft.canInsert) {
@@ -161,7 +179,7 @@ class VoiceMeAccessibilityService : AccessibilityService() {
                 )
             }
             if (focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)) {
-                showToast("Inserted VoiceMe test transcript.")
+                showToast("Inserted VoiceMe dictation.")
             } else {
                 showToast("This field does not accept accessibility text insertion.")
             }
@@ -203,11 +221,17 @@ class VoiceMeAccessibilityService : AccessibilityService() {
             isDictationRecording = false
             return
         }
-        ContextCompat.startForegroundService(
-            this,
-            VoiceMeRecordingService.startIntent(this),
-        )
-        isDictationRecording = true
+        runCatching {
+            ContextCompat.startForegroundService(
+                this,
+                VoiceMeRecordingService.startIntent(this),
+            )
+        }.onSuccess {
+            isDictationRecording = true
+        }.onFailure { error ->
+            isDictationRecording = false
+            showToast("VoiceMe could not start dictation: ${error.message ?: error::class.java.simpleName}")
+        }
     }
 
     private fun stopDictationRecording() {
