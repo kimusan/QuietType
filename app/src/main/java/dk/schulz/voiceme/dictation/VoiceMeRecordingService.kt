@@ -16,10 +16,13 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import com.k2fsa.sherpa.onnx.OfflineRecognizer
+import com.k2fsa.sherpa.onnx.OfflineStream
 import com.k2fsa.sherpa.onnx.OnlineRecognizer
 import com.k2fsa.sherpa.onnx.OnlineStream
 import dk.schulz.voiceme.R
 import dk.schulz.voiceme.models.ModelCatalog
+import dk.schulz.voiceme.models.ModelRuntimeKind
 import dk.schulz.voiceme.settings.AppSettingsStore
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
@@ -49,7 +52,7 @@ class VoiceMeRecordingService : Service() {
         ensureNotificationChannel()
         startForeground(NotificationId, buildNotification("Listening locally with VoiceMe."))
         startRecognitionSession()
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     override fun onDestroy() {
@@ -68,7 +71,7 @@ class VoiceMeRecordingService : Service() {
             return
         }
         val runtimeDirectory = File(filesDir, "models/${model.id}/runtime")
-        if (!SherpaRuntimeConfig.canRunOnline(model, runtimeDirectory)) {
+        if (!SherpaRuntimeConfig.canRunDictation(model, runtimeDirectory)) {
             notifyStatus("Download and prepare ${model.name} before dictating.")
             stopSelf()
             return
@@ -76,12 +79,55 @@ class VoiceMeRecordingService : Service() {
 
         keepRecording.set(true)
         recordingThread = Thread({
-            runRecognitionLoop(modelName = model.name, runtimeDirectory = runtimeDirectory)
+            when (model.runtime.kind) {
+                ModelRuntimeKind.SherpaOnnxOfflineTransducer,
+                ModelRuntimeKind.SherpaOnnxOfflineCtc -> runOfflineTransducerLoop(
+                    modelName = model.name,
+                    runtimeDirectory = runtimeDirectory,
+                )
+                ModelRuntimeKind.SherpaOnnxStreamingTransducer -> runOnlineStreamingLoop(
+                    modelName = model.name,
+                    runtimeDirectory = runtimeDirectory,
+                )
+                else -> notifyStatus("${model.name} is not supported for dictation yet.")
+            }
         }, "VoiceMeSherpaRecognition").apply { start() }
     }
 
     @SuppressLint("MissingPermission")
-    private fun runRecognitionLoop(modelName: String, runtimeDirectory: File) {
+    private fun runOfflineTransducerLoop(modelName: String, runtimeDirectory: File) {
+        var recognizer: OfflineRecognizer? = null
+        var stream: OfflineStream? = null
+        try {
+            val audioChunks = recordHeldAudio(modelName)
+            if (audioChunks.isEmpty()) return
+            broadcastProcessingState(true)
+            val model = ModelCatalog.default().modelById(settingsStore.load().selectedModelId) ?: return
+            recognizer = OfflineRecognizer(
+                assetManager = null,
+                config = SherpaRuntimeConfig.buildOfflineRecognizerConfig(
+                    model = model,
+                    runtimeDirectory = runtimeDirectory,
+                ),
+            )
+            stream = recognizer.createStream()
+            audioChunks.forEach { chunk ->
+                stream.acceptWaveform(chunk, SherpaRuntimeConfig.SampleRateHz)
+            }
+            recognizer.decode(stream)
+            broadcastFinalTranscript(recognizer.getResult(stream).text.trim())
+        } catch (error: Throwable) {
+            notifyStatus("VoiceMe dictation stopped: ${error.message ?: error::class.java.simpleName}.")
+        } finally {
+            stream?.release()
+            recognizer?.release()
+            broadcastProcessingState(false)
+            keepRecording.set(false)
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun runOnlineStreamingLoop(modelName: String, runtimeDirectory: File) {
         var recognizer: OnlineRecognizer? = null
         var stream: OnlineStream? = null
         var lastText = ""
@@ -126,12 +172,12 @@ class VoiceMeRecordingService : Service() {
                 val text = recognizer.getResult(stream).text.trim()
                 if (text.isNotBlank()) lastText = text
             }
-            stream.inputFinished()
-            while (recognizer.isReady(stream)) {
-                recognizer.decode(stream)
-            }
-            val finalText = recognizer.getResult(stream).text.trim().ifBlank { lastText }
-            broadcastFinalTranscript(finalText)
+            // Avoid a final native decode during service teardown. On the current sherpa
+            // Android runtime this path can abort the process after the foreground
+            // service is stopped, which also restarts the accessibility overlay. Use
+            // the last stable partial result until the runtime path is hardened enough
+            // for near-real-time partial insertion.
+            broadcastFinalTranscript(lastText)
         } catch (error: Throwable) {
             notifyStatus("VoiceMe dictation stopped: ${error.message ?: error::class.java.simpleName}.")
         } finally {
@@ -144,13 +190,51 @@ class VoiceMeRecordingService : Service() {
         }
     }
 
+    @SuppressLint("MissingPermission")
+    private fun recordHeldAudio(modelName: String): List<FloatArray> {
+        val minBufferSize = AudioRecord.getMinBufferSize(
+            SherpaRuntimeConfig.SampleRateHz,
+            AudioFormat.CHANNEL_IN_MONO,
+            AudioFormat.ENCODING_PCM_16BIT,
+        ).coerceAtLeast(SherpaRuntimeConfig.SampleRateHz / 5)
+        val audioRecord = AudioRecord(
+            MediaRecorder.AudioSource.VOICE_RECOGNITION,
+            SherpaRuntimeConfig.SampleRateHz,
+            AudioFormat.CHANNEL_IN_MONO,
+            AudioFormat.ENCODING_PCM_16BIT,
+            minBufferSize,
+        )
+        if (audioRecord.state != AudioRecord.STATE_INITIALIZED) {
+            audioRecord.release()
+            notifyStatus("Could not open microphone for VoiceMe.")
+            return emptyList()
+        }
+        val chunks = mutableListOf<FloatArray>()
+        recorder = audioRecord
+        try {
+            val shortBuffer = ShortArray(minBufferSize / 2)
+            audioRecord.startRecording()
+            notifyStatus("VoiceMe is dictating with $modelName.")
+            while (keepRecording.get()) {
+                val read = audioRecord.read(shortBuffer, 0, shortBuffer.size)
+                if (read <= 0) continue
+                chunks += FloatArray(read) { index -> shortBuffer[index] / Short.MAX_VALUE.toFloat() }
+            }
+        } finally {
+            runCatching { audioRecord.stop() }
+            audioRecord.release()
+            if (recorder === audioRecord) recorder = null
+        }
+        return chunks
+    }
+
     private fun stopRecognitionSession() {
         keepRecording.set(false)
         runCatching { recorder?.stop() }
-        recordingThread?.join(1_500)
-        recordingThread = null
-        recorder?.release()
-        recorder = null
+        recordingThread?.join(3_000)
+        if (recordingThread?.isAlive != true) {
+            recordingThread = null
+        }
     }
 
     private fun broadcastFinalTranscript(transcript: String) {
@@ -159,6 +243,15 @@ class VoiceMeRecordingService : Service() {
             Intent(DictationTranscriptContract.ActionFinalTranscript).apply {
                 setPackage(packageName)
                 putExtra(DictationTranscriptContract.ExtraTranscript, clean)
+            },
+        )
+    }
+
+    private fun broadcastProcessingState(isProcessing: Boolean) {
+        sendBroadcast(
+            Intent(DictationTranscriptContract.ActionProcessingState).apply {
+                setPackage(packageName)
+                putExtra(DictationTranscriptContract.ExtraIsProcessing, isProcessing)
             },
         )
     }

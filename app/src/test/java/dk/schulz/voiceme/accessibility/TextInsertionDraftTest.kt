@@ -27,6 +27,27 @@ class TextInsertionDraftTest {
     }
 
     @Test
+    fun placeholderHintTextIsNotPrependedToTranscript() {
+        val draft = TextInsertionDraft.from(
+            TextInsertionRequest(
+                focusedField = FocusedFieldSnapshot(
+                    packageName = "com.example.search",
+                    className = "android.widget.EditText",
+                    isFocused = true,
+                    isEditable = true,
+                    isPassword = false,
+                ),
+                existingText = "Search…",
+                hintText = "Search…",
+                transcript = "coffee nearby",
+            ),
+        )
+
+        assertTrue(draft.canInsert)
+        assertEquals("coffee nearby", draft.textToSet)
+    }
+
+    @Test
     fun emptyTranscriptDoesNotInsert() {
         val draft = TextInsertionDraft.from(
             TextInsertionRequest(

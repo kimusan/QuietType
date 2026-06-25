@@ -19,4 +19,41 @@ class VoiceMeAccessibilityPresentationTest {
         assertTrue(VoiceMeAccessibilityPresentation.statusText(isEnabled = false).contains("not enabled"))
         assertTrue(VoiceMeAccessibilityPresentation.statusText(isEnabled = false).contains("Accessibility settings"))
     }
+
+    @Test
+    fun overlayLabelShowsIdleListeningAndProcessingStateAndAppName() {
+        assertEquals(
+            "🎙 VoiceMe · notes",
+            VoiceMeAccessibilityPresentation.overlayLabel(
+                packageName = "com.example.notes",
+                state = OverlayDictationState.Idle,
+            ),
+        )
+        assertEquals(
+            "● Listening · notes",
+            VoiceMeAccessibilityPresentation.overlayLabel(
+                packageName = "com.example.notes",
+                state = OverlayDictationState.Listening,
+            ),
+        )
+        assertEquals(
+            "⏳ Thinking · notes",
+            VoiceMeAccessibilityPresentation.overlayLabel(
+                packageName = "com.example.notes",
+                state = OverlayDictationState.Processing,
+            ),
+        )
+    }
+
+    @Test
+    fun stopRequestSwitchesButtonToProcessingImmediately() {
+        assertEquals(
+            OverlayDictationState.Processing,
+            VoiceMeAccessibilityPresentation.stateAfterStopRequested(wasRecording = true),
+        )
+        assertEquals(
+            OverlayDictationState.Idle,
+            VoiceMeAccessibilityPresentation.stateAfterStopRequested(wasRecording = false),
+        )
+    }
 }

@@ -36,6 +36,7 @@ class MainActivity : ComponentActivity() {
     private var isAccessibilityEnabled by mutableStateOf(false)
     private var modelDownloadStatus by mutableStateOf<String?>(null)
     private var modelDownloadProgress by mutableStateOf<ModelDownloadProgress?>(null)
+    private var activeModelDownloadId by mutableStateOf<String?>(null)
 
     private val microphonePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -63,6 +64,7 @@ class MainActivity : ComponentActivity() {
                 modelCatalogState = modelCatalogState(),
                 modelDownloadStatus = modelDownloadStatus,
                 modelDownloadProgress = modelDownloadProgress,
+                isModelDownloadActive = activeModelDownloadId != null,
                 isAccessibilityEnabled = isAccessibilityEnabled,
                 onSettingsChange = ::saveSettings,
                 onOpenAccessibilitySettings = {
@@ -168,6 +170,16 @@ class MainActivity : ComponentActivity() {
         onSettingsReady: (AppSettings) -> Unit,
     ) {
         val model = modelCatalogState().catalog.modelById(modelId) ?: return
+        if (activeModelDownloadId != null) {
+            modelDownloadStatus = "A model download is already running. Wait for it to finish before starting another."
+            return
+        }
+        if (!model.isOfflineCapable || model.runtime.requiredFiles.isEmpty()) {
+            modelDownloadStatus = "${model.name} is a benchmark/reference entry and is not downloadable in the app yet. Choose a mobile-ready model instead."
+            modelDownloadProgress = null
+            return
+        }
+        activeModelDownloadId = model.id
         modelDownloadStatus = "Starting download for ${model.name}…"
         modelDownloadProgress = ModelDownloadProgress(
             modelId = model.id,
@@ -186,6 +198,7 @@ class MainActivity : ComponentActivity() {
                 }
             }.getOrElse { error ->
                 runOnUiThread {
+                    activeModelDownloadId = null
                     modelDownloadProgress = null
                     modelDownloadStatus = "Download failed for ${model.name}: ${error.message ?: error::class.java.simpleName}."
                 }
@@ -193,6 +206,7 @@ class MainActivity : ComponentActivity() {
             }
 
             runOnUiThread {
+                activeModelDownloadId = null
                 modelDownloadProgress = null
                 when (result) {
                     is ModelArtifactInstallResult.Installed -> {

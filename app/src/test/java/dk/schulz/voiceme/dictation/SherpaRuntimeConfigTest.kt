@@ -13,16 +13,17 @@ class SherpaRuntimeConfigTest {
     val temporaryFolder = TemporaryFolder()
 
     @Test
-    fun parakeetInt8PreparedRuntimeBuildsOnlineTransducerConfig() {
+    fun parakeetInt8PreparedRuntimeBuildsOfflineTransducerConfig() {
         val model = ModelCatalog.default().recommended
         val runtime = temporaryFolder.newFolder("runtime")
         listOf("encoder.int8.onnx", "decoder.int8.onnx", "joiner.int8.onnx", "tokens.txt").forEach { name ->
             runtime.resolve(name).writeText("fake")
         }
 
-        assertTrue(SherpaRuntimeConfig.canRunOnline(model, runtime))
+        assertTrue(SherpaRuntimeConfig.canRunDictation(model, runtime))
+        assertFalse(SherpaRuntimeConfig.canRunOnline(model, runtime))
 
-        val config = SherpaRuntimeConfig.buildOnlineRecognizerConfig(
+        val config = SherpaRuntimeConfig.buildOfflineRecognizerConfig(
             model = model,
             runtimeDirectory = runtime,
             numThreads = 2,
@@ -38,16 +39,36 @@ class SherpaRuntimeConfigTest {
     }
 
     @Test
-    fun missingRuntimeFilesCannotRunOnline() {
+    fun compactCtcPreparedRuntimeBuildsOfflineNemoCtcConfig() {
+        val model = ModelCatalog.default().modelById("sherpa-onnx-nemo-fast-conformer-ctc-multilingual-int8")!!
+        val runtime = temporaryFolder.newFolder("runtime")
+        listOf("model.int8.onnx", "tokens.txt").forEach { name ->
+            runtime.resolve(name).writeText("fake")
+        }
+
+        assertTrue(SherpaRuntimeConfig.canRunDictation(model, runtime))
+
+        val config = SherpaRuntimeConfig.buildOfflineRecognizerConfig(
+            model = model,
+            runtimeDirectory = runtime,
+            numThreads = 1,
+        )
+
+        assertEquals(runtime.resolve("model.int8.onnx").absolutePath, config.modelConfig.nemo.model)
+        assertEquals(runtime.resolve("tokens.txt").absolutePath, config.modelConfig.tokens)
+    }
+
+    @Test
+    fun missingRuntimeFilesCannotRunDictation() {
         val model = ModelCatalog.default().recommended
         val runtime = temporaryFolder.newFolder("runtime")
         runtime.resolve("encoder.int8.onnx").writeText("fake")
 
-        assertFalse(SherpaRuntimeConfig.canRunOnline(model, runtime))
+        assertFalse(SherpaRuntimeConfig.canRunDictation(model, runtime))
     }
 
     @Test
-    fun emptyRuntimeFilesCannotRunOnline() {
+    fun emptyRuntimeFilesCannotRunDictation() {
         val model = ModelCatalog.default().recommended
         val runtime = temporaryFolder.newFolder("runtime")
         listOf("encoder.int8.onnx", "decoder.int8.onnx", "joiner.int8.onnx", "tokens.txt").forEach { name ->
@@ -55,6 +76,6 @@ class SherpaRuntimeConfigTest {
         }
         runtime.resolve("decoder.int8.onnx").writeBytes(ByteArray(0))
 
-        assertFalse(SherpaRuntimeConfig.canRunOnline(model, runtime))
+        assertFalse(SherpaRuntimeConfig.canRunDictation(model, runtime))
     }
 }

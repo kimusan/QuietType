@@ -13,6 +13,7 @@ The format follows Keep a Changelog principles, and versions should follow seman
 - Interactive Material 3 setup preview with onboarding, status, and settings sections for the privacy-first dictation flow.
 - Local settings persistence for onboarding completion, dictation interaction preference, offline-only mode, and sensitive-field behavior.
 - Accessibility service registration, focused editable-field detection, and a draggable safe microphone preview overlay, plus an in-app shortcut to Android Accessibility settings.
+- Floating dictation button now consumes full tap/hold gestures, stays visible while dictation is active despite accessibility focus churn, switches to a red `● Listening` label while microphone capture is active, then returns to idle color with a `⏳ Thinking` label as soon as recording stop is requested while offline decoding finishes.
 - Upgraded the vendored sherpa-onnx Android runtime to v1.13.3 so packaged arm64 native libraries are 16 KB page-size compatible on newer Android devices.
 - Switched sherpa recognizer creation to file-mode loading for app-private absolute model paths, fixing a native crash when dictation starts from the floating button.
 - Added runtime-file validation so missing or empty prepared model files are rejected before native ASR startup.
@@ -28,3 +29,7 @@ The format follows Keep a Changelog principles, and versions should follow seman
 - Accessibility service readiness notification and broader text/window event handling so the floating button is easier to surface in modern input fields.
 - Floating mic default placement now starts higher above the bottom edge, and dragged overlay position is saved locally for the next focused text field.
 - Overlay dictation interaction now owns the microphone only during active hold-to-talk or tap-to-toggle dictation instead of starting capture immediately after microphone permission is granted.
+- Compact multilingual CTC fallback models now use the offline CTC sherpa recognizer path instead of the transducer/online path.
+- Model downloads now reject benchmark/reference entries before checksum work starts, keep progress visible above the model-list scroll, and disable duplicate download/delete/select actions while a download is active.
+- Setup/status/settings/models navigation now stays pinned at the top while each section scrolls.
+- Placeholder/hint text from target fields is no longer prepended to inserted dictation text.

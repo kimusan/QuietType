@@ -4,6 +4,7 @@ data class TextInsertionRequest(
     val focusedField: FocusedFieldSnapshot,
     val existingText: String,
     val transcript: String,
+    val hintText: String? = null,
 )
 
 enum class TextInsertionBlockReason {
@@ -28,7 +29,11 @@ data class TextInsertionDraft(
                 request.focusedField.isPassword -> blocked(TextInsertionBlockReason.SensitiveField)
                 else -> TextInsertionDraft(
                     canInsert = true,
-                    textToSet = appendTranscript(request.existingText, transcript),
+                    textToSet = appendTranscript(
+                        existingText = request.existingText,
+                        hintText = request.hintText,
+                        transcript = transcript,
+                    ),
                     blockReason = TextInsertionBlockReason.None,
                 )
             }
@@ -40,12 +45,14 @@ data class TextInsertionDraft(
             blockReason = reason,
         )
 
-        private fun appendTranscript(existingText: String, transcript: String): String {
+        private fun appendTranscript(existingText: String, hintText: String?, transcript: String): String {
             val existing = existingText.trimEnd()
-            return if (existing.isBlank()) {
+            val hint = hintText?.trim()
+            val realExisting = if (hint != null && existing.trim() == hint) "" else existing
+            return if (realExisting.isBlank()) {
                 transcript
             } else {
-                "$existing $transcript"
+                "$realExisting $transcript"
             }
         }
     }

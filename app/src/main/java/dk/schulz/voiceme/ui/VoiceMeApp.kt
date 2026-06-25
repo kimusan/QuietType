@@ -58,6 +58,7 @@ fun VoiceMeApp(
     modelCatalogState: ModelCatalogState = ModelCatalogState.default(),
     modelDownloadStatus: String? = null,
     modelDownloadProgress: ModelDownloadProgress? = null,
+    isModelDownloadActive: Boolean = false,
     isAccessibilityEnabled: Boolean = false,
     onSettingsChange: (AppSettings) -> Unit = {},
     onOpenAccessibilitySettings: () -> Unit = {},
@@ -75,6 +76,7 @@ fun VoiceMeApp(
             modelCatalogState = modelCatalogState,
             modelDownloadStatus = modelDownloadStatus,
             modelDownloadProgress = modelDownloadProgress,
+            isModelDownloadActive = isModelDownloadActive,
             isAccessibilityEnabled = isAccessibilityEnabled,
             onSettingsChange = onSettingsChange,
             onOpenAccessibilitySettings = onOpenAccessibilitySettings,
@@ -96,6 +98,7 @@ fun VoiceMeHomeScreen(
     modelCatalogState: ModelCatalogState,
     modelDownloadStatus: String?,
     modelDownloadProgress: ModelDownloadProgress?,
+    isModelDownloadActive: Boolean,
     isAccessibilityEnabled: Boolean,
     onSettingsChange: (AppSettings) -> Unit,
     onOpenAccessibilitySettings: () -> Unit,
@@ -127,70 +130,81 @@ fun VoiceMeHomeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+                .padding(innerPadding),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             SectionChips(
                 selectedSection = selectedSection,
                 onSelectedSectionChange = { selectedSection = it },
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
             )
-            when (selectedSection) {
-                0 -> VoiceMeOnboardingScreen(
-                    step = onboardingFlow.currentStep(currentStep),
-                    currentStep = currentStep,
-                    totalSteps = onboardingFlow.totalSteps,
-                    permissionStatus = onboardingPermissionStatus,
-                    onBack = {
-                        currentStep = onboardingFlow.previousIndex(currentStep)
-                    },
-                    onNext = {
-                        if (currentStep == onboardingFlow.lastStepIndex) {
-                            onSettingsChange(appSettings.completeOnboarding())
-                            selectedSection = 1
-                        } else {
-                            currentStep = onboardingFlow.nextIndex(currentStep)
-                        }
-                    },
-                    onStepAction = { action ->
-                        when (action) {
-                            OnboardingAction.OpenAccessibilitySettings -> onOpenAccessibilitySettings()
-                            OnboardingAction.RequestMicrophonePermission -> onRequestMicrophonePermission()
-                            OnboardingAction.OpenModels -> selectedSection = 3
-                            OnboardingAction.None -> Unit
-                        }
-                    },
-                )
-
-                1 -> VoiceMeStatusScreen(
-                    appSettings = appSettings,
-                    dictationState = dictationState,
-                    modelCatalogState = modelCatalogState,
-                    isAccessibilityEnabled = isAccessibilityEnabled,
-                    onReviewSetup = {
-                        currentStep = 0
-                        selectedSection = 0
-                    },
-                    onOpenAccessibilitySettings = onOpenAccessibilitySettings,
-                    onRequestMicrophonePermission = onRequestMicrophonePermission,
-                    onStartRecordingShell = onStartRecordingShell,
-                    onStopRecordingShell = onStopRecordingShell,
-                )
-
-                2 -> VoiceMeSettingsPreview(
-                    appSettings = appSettings,
-                    onSettingsChange = onSettingsChange,
-                )
-
-                else -> VoiceMeModelsScreen(
+            if (selectedSection == 3) {
+                VoiceMeModelsScreen(
                     modelCatalogState = modelCatalogState,
                     modelDownloadStatus = modelDownloadStatus,
                     modelDownloadProgress = modelDownloadProgress,
+                    isModelDownloadActive = isModelDownloadActive,
                     onSelectModel = onSelectModel,
                     onDownloadModel = onDownloadModel,
                     onDeleteModel = onDeleteModel,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp, vertical = 12.dp),
                 )
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                ) {
+                    when (selectedSection) {
+                        0 -> VoiceMeOnboardingScreen(
+                            step = onboardingFlow.currentStep(currentStep),
+                            currentStep = currentStep,
+                            totalSteps = onboardingFlow.totalSteps,
+                            permissionStatus = onboardingPermissionStatus,
+                            onBack = { currentStep = onboardingFlow.previousIndex(currentStep) },
+                            onNext = {
+                                if (currentStep == onboardingFlow.lastStepIndex) {
+                                    onSettingsChange(appSettings.completeOnboarding())
+                                    selectedSection = 1
+                                } else {
+                                    currentStep = onboardingFlow.nextIndex(currentStep)
+                                }
+                            },
+                            onStepAction = { action ->
+                                when (action) {
+                                    OnboardingAction.OpenAccessibilitySettings -> onOpenAccessibilitySettings()
+                                    OnboardingAction.RequestMicrophonePermission -> onRequestMicrophonePermission()
+                                    OnboardingAction.OpenModels -> selectedSection = 3
+                                    OnboardingAction.None -> Unit
+                                }
+                            },
+                        )
+
+                        1 -> VoiceMeStatusScreen(
+                            appSettings = appSettings,
+                            dictationState = dictationState,
+                            modelCatalogState = modelCatalogState,
+                            isAccessibilityEnabled = isAccessibilityEnabled,
+                            onReviewSetup = {
+                                currentStep = 0
+                                selectedSection = 0
+                            },
+                            onOpenAccessibilitySettings = onOpenAccessibilitySettings,
+                            onRequestMicrophonePermission = onRequestMicrophonePermission,
+                            onStartRecordingShell = onStartRecordingShell,
+                            onStopRecordingShell = onStopRecordingShell,
+                        )
+
+                        else -> VoiceMeSettingsPreview(
+                            appSettings = appSettings,
+                            onSettingsChange = onSettingsChange,
+                        )
+                    }
+                }
             }
         }
     }
@@ -485,6 +499,7 @@ private fun VoiceMeModelsScreen(
     modelCatalogState: ModelCatalogState,
     modelDownloadStatus: String?,
     modelDownloadProgress: ModelDownloadProgress?,
+    isModelDownloadActive: Boolean,
     onSelectModel: (String) -> Unit,
     onDownloadModel: (String) -> Unit,
     onDeleteModel: (String) -> Unit,
@@ -529,51 +544,68 @@ private fun VoiceMeModelsScreen(
                 )
             }
         }
-        modelCatalogState.catalog.models.forEach { model ->
-            val selected = model.id == modelCatalogState.selectedModel.id
-            val downloaded = modelCatalogState.downloadedModelIds.contains(model.id)
-            val prepared = modelCatalogState.preparedModelIds.contains(model.id)
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Text(
-                        text = model.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = model.description,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Text(
-                        text = "${model.engine} · ${model.language} · ~${model.sizeMegabytes} MB · ${model.license}",
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                    Text(
-                        text = "Status: ${model.statusLabel(downloaded = downloaded, prepared = prepared)}${if (selected) " · selected" else ""}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            modelCatalogState.catalog.models.forEach { model ->
+                val selected = model.id == modelCatalogState.selectedModel.id
+                val downloaded = modelCatalogState.downloadedModelIds.contains(model.id)
+                val prepared = modelCatalogState.preparedModelIds.contains(model.id)
+                val downloadable = model.isOfflineCapable && model.runtime.requiredFiles.isNotEmpty()
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        OutlinedButton(
-                            onClick = { onSelectModel(model.id) },
-                            enabled = !selected,
-                            modifier = Modifier.weight(1f),
+                        Text(
+                            text = model.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = model.description,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        Text(
+                            text = "${model.engine} · ${model.language} · ~${model.sizeMegabytes} MB · ${model.license}",
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Text(
+                            text = "Status: ${model.statusLabel(downloaded = downloaded, prepared = prepared, downloadable = downloadable)}${if (selected) " · selected" else ""}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            Text(if (selected) "Selected" else "Select")
-                        }
-                        Button(
-                            onClick = {
-                                if (downloaded) onDeleteModel(model.id) else onDownloadModel(model.id)
-                            },
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Text(if (downloaded) "Delete" else "Download")
+                            OutlinedButton(
+                                onClick = { onSelectModel(model.id) },
+                                enabled = !selected && !isModelDownloadActive,
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text(if (selected) "Selected" else "Select")
+                            }
+                            Button(
+                                onClick = {
+                                    if (downloaded) onDeleteModel(model.id) else onDownloadModel(model.id)
+                                },
+                                enabled = !isModelDownloadActive && (downloaded || downloadable),
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text(
+                                    when {
+                                        isModelDownloadActive -> "Busy"
+                                        downloaded -> "Delete"
+                                        downloadable -> "Download"
+                                        else -> "Unavailable"
+                                    },
+                                )
+                            }
                         }
                     }
                 }
@@ -582,9 +614,10 @@ private fun VoiceMeModelsScreen(
     }
 }
 
-private fun VoiceModel.statusLabel(downloaded: Boolean, prepared: Boolean): String = when {
+private fun VoiceModel.statusLabel(downloaded: Boolean, prepared: Boolean, downloadable: Boolean): String = when {
     prepared -> "prepared for dictation"
     downloaded -> "downloaded archive · preparation pending"
+    !downloadable -> "benchmark/reference only · not downloadable in app"
     else -> "not downloaded"
 }
 
@@ -668,6 +701,7 @@ private fun VoiceMeHomeScreenPreview() {
             modelCatalogState = ModelCatalogState.default(),
             modelDownloadStatus = null,
             modelDownloadProgress = null,
+            isModelDownloadActive = false,
             isAccessibilityEnabled = false,
             onSettingsChange = {},
             onOpenAccessibilitySettings = {},

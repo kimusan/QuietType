@@ -21,6 +21,7 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.TextView
 import android.widget.Toast
+import androidx.annotation.ColorInt
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import dk.schulz.voiceme.R
@@ -36,14 +37,24 @@ class VoiceMeAccessibilityService : AccessibilityService() {
     private lateinit var windowManager: WindowManager
     private var overlayView: View? = null
     private var isDictationRecording = false
+    private var isDictationProcessing = false
     private var lastDetection: FocusedFieldDetection? = null
-    private val transcriptReceiver = object : BroadcastReceiver() {
+    private val dictationReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action != DictationTranscriptContract.ActionFinalTranscript) return
-            val transcript = DictationTranscriptContract.cleanFinalTranscript(
-                intent.getStringExtra(DictationTranscriptContract.ExtraTranscript),
-            ) ?: return
-            insertTranscriptIntoFocusedField(transcript)
+            when (intent?.action) {
+                DictationTranscriptContract.ActionFinalTranscript -> {
+                    isDictationProcessing = false
+                    keepActiveOverlayVisible()
+                    val transcript = DictationTranscriptContract.cleanFinalTranscript(
+                        intent.getStringExtra(DictationTranscriptContract.ExtraTranscript),
+                    ) ?: return
+                    insertTranscriptIntoFocusedField(transcript)
+                }
+                DictationTranscriptContract.ActionProcessingState -> {
+                    isDictationProcessing = intent.getBooleanExtra(DictationTranscriptContract.ExtraIsProcessing, false)
+                    keepActiveOverlayVisible()
+                }
+            }
         }
     }
 
@@ -53,8 +64,11 @@ class VoiceMeAccessibilityService : AccessibilityService() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         ContextCompat.registerReceiver(
             this,
-            transcriptReceiver,
-            IntentFilter(DictationTranscriptContract.ActionFinalTranscript),
+            dictationReceiver,
+            IntentFilter().apply {
+                addAction(DictationTranscriptContract.ActionFinalTranscript)
+                addAction(DictationTranscriptContract.ActionProcessingState)
+            },
             ContextCompat.RECEIVER_NOT_EXPORTED,
         )
     }
@@ -71,8 +85,12 @@ class VoiceMeAccessibilityService : AccessibilityService() {
 
         val node = rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: event.source
         if (node == null) {
-            hideOverlay()
-            lastDetection = null
+            if (isDictationRecording || isDictationProcessing) {
+                keepActiveOverlayVisible()
+            } else {
+                hideOverlay()
+                lastDetection = null
+            }
             return
         }
 
@@ -89,6 +107,8 @@ class VoiceMeAccessibilityService : AccessibilityService() {
 
             if (detection.shouldShowOverlay) {
                 showOrUpdateOverlay(detection)
+            } else if (isDictationRecording || isDictationProcessing) {
+                keepActiveOverlayVisible()
             } else {
                 hideOverlay()
             }
@@ -104,7 +124,7 @@ class VoiceMeAccessibilityService : AccessibilityService() {
     override fun onDestroy() {
         hideOverlay()
         stopDictationRecording()
-        runCatching { unregisterReceiver(transcriptReceiver) }
+        runCatching { unregisterReceiver(dictationReceiver) }
         cancelServiceReadyNotification()
         super.onDestroy()
     }
@@ -112,18 +132,15 @@ class VoiceMeAccessibilityService : AccessibilityService() {
     private fun showOrUpdateOverlay(detection: FocusedFieldDetection) {
         val existing = overlayView as? TextView
         if (existing != null) {
-            existing.text = overlayLabel(detection)
+            updateOverlayPresentation(existing, detection)
             return
         }
 
         val view = TextView(this).apply {
-            text = overlayLabel(detection)
             textSize = 16f
             setTextColor(0xFFFFFFFF.toInt())
-            setBackgroundColor(0xFF6750A4.toInt())
             setPadding(28, 18, 28, 18)
             elevation = 12f
-            contentDescription = "VoiceMe dictation button"
             setOnTouchListener(
                 OverlayDragTouchListener(
                     windowManager = windowManager,
@@ -135,17 +152,38 @@ class VoiceMeAccessibilityService : AccessibilityService() {
                 ),
             )
         }
+        updateOverlayPresentation(view, detection)
 
         windowManager.addView(view, overlayLayoutParams())
         overlayView = view
     }
 
     private fun hideOverlay() {
-        stopDictationRecording()
+        hideOverlay(stopRecording = true)
+    }
+
+    private fun hideOverlay(stopRecording: Boolean) {
+        if (stopRecording) stopDictationRecording()
         overlayView?.let { view ->
             runCatching { windowManager.removeView(view) }
         }
         overlayView = null
+    }
+
+    private fun keepActiveOverlayVisible() {
+        val detection = lastDetection
+        val view = overlayView as? TextView
+        if (detection != null && view != null) {
+            updateOverlayPresentation(view, detection)
+        }
+    }
+
+    private fun updateOverlayPresentation(view: TextView, detection: FocusedFieldDetection) {
+        val state = currentOverlayState()
+        val label = overlayLabel(detection, state)
+        view.text = label
+        view.contentDescription = label
+        view.setBackgroundColor(if (state == OverlayDictationState.Listening) ListeningColor else IdleColor)
     }
 
     private fun insertTranscriptIntoFocusedField(transcript: String) {
@@ -164,6 +202,7 @@ class VoiceMeAccessibilityService : AccessibilityService() {
                 TextInsertionRequest(
                     focusedField = snapshot,
                     existingText = focusedNode.text?.toString().orEmpty(),
+                    hintText = focusedNode.hintText?.toString(),
                     transcript = transcript,
                 ),
             )
@@ -228,25 +267,34 @@ class VoiceMeAccessibilityService : AccessibilityService() {
             )
         }.onSuccess {
             isDictationRecording = true
+            isDictationProcessing = false
+            keepActiveOverlayVisible()
         }.onFailure { error ->
             isDictationRecording = false
+            keepActiveOverlayVisible()
             showToast("VoiceMe could not start dictation: ${error.message ?: error::class.java.simpleName}")
         }
     }
 
     private fun stopDictationRecording() {
+        val wasRecording = isDictationRecording
         stopService(VoiceMeRecordingService.stopIntent(this))
         isDictationRecording = false
+        isDictationProcessing = VoiceMeAccessibilityPresentation.stateAfterStopRequested(wasRecording) == OverlayDictationState.Processing
+        keepActiveOverlayVisible()
     }
 
-    private fun overlayLabel(detection: FocusedFieldDetection): String {
-        val appLabel = detection.packageName?.substringAfterLast('.')?.takeIf { it.isNotBlank() }
-        return if (appLabel == null) {
-            "🎙 VoiceMe"
-        } else {
-            "🎙 VoiceMe · $appLabel"
-        }
+    private fun currentOverlayState(): OverlayDictationState = when {
+        isDictationRecording -> OverlayDictationState.Listening
+        isDictationProcessing -> OverlayDictationState.Processing
+        else -> OverlayDictationState.Idle
     }
+
+    private fun overlayLabel(detection: FocusedFieldDetection, state: OverlayDictationState): String =
+        VoiceMeAccessibilityPresentation.overlayLabel(
+            packageName = detection.packageName,
+            state = state,
+        )
 
     @SuppressLint("MissingPermission")
     private fun showServiceReadyNotification() {
@@ -328,6 +376,8 @@ class VoiceMeAccessibilityService : AccessibilityService() {
     companion object {
         private const val ServiceChannelId = "voiceme_accessibility"
         private const val ServiceNotificationId = 2001
+        @ColorInt private val IdleColor = 0xFF6750A4.toInt()
+        @ColorInt private val ListeningColor = 0xFFB3261E.toInt()
     }
 
     private class OverlayDragTouchListener(
@@ -359,14 +409,14 @@ class VoiceMeAccessibilityService : AccessibilityService() {
                             isRecording = isRecording(),
                         ),
                     )
-                    return false
+                    return true
                 }
 
                 MotionEvent.ACTION_MOVE -> {
                     val dx = (event.rawX - downRawX).toInt()
                     val dy = (event.rawY - downRawY).toInt()
                     if (!dragging && kotlin.math.abs(dx) + kotlin.math.abs(dy) < 12) {
-                        return false
+                        return true
                     }
                     dragging = true
                     params.x = (startX - dx).coerceAtLeast(0)
@@ -386,7 +436,7 @@ class VoiceMeAccessibilityService : AccessibilityService() {
                             wasDragging = wasDragging,
                         ),
                     )
-                    return wasDragging
+                    return true
                 }
             }
             return false
