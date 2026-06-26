@@ -12,6 +12,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.PixelFormat
+import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
 import android.view.Gravity
@@ -151,11 +152,11 @@ class QuietTypeAccessibilityService : AccessibilityService() {
 
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            elevation = 12f
+            elevation = dp(6).toFloat()
+            setPadding(dp(4), dp(4), dp(4), dp(4))
         }
         val handle = overlayPart("☰").apply {
-            contentDescription = "Drag QuietType button"
-            setPadding(18, 18, 14, 18)
+            contentDescription = "Drag QuietType floating dictation controls"
             setOnTouchListener(
                 OverlayMoveTouchListener(
                     windowManager = windowManager,
@@ -165,7 +166,6 @@ class QuietTypeAccessibilityService : AccessibilityService() {
             )
         }
         val mic = overlayPart("").apply {
-            setPadding(20, 18, 20, 18)
             setOnTouchListener(
                 OverlayDictationTouchListener(
                     onDictationCommand = ::handleDictationCommand,
@@ -175,8 +175,7 @@ class QuietTypeAccessibilityService : AccessibilityService() {
             )
         }
         val hide = overlayPart("×").apply {
-            contentDescription = "Hide QuietType here"
-            setPadding(18, 18, 18, 18)
+            contentDescription = "Hide QuietType for this field"
             setOnClickListener { confirmHideCurrentTarget() }
         }
         container.addView(handle)
@@ -191,8 +190,14 @@ class QuietTypeAccessibilityService : AccessibilityService() {
     private fun overlayPart(label: String): TextView = TextView(this).apply {
         text = label
         textSize = 16f
+        gravity = Gravity.CENTER
+        minWidth = dp(48)
+        minHeight = dp(48)
+        setPadding(dp(12), dp(8), dp(12), dp(8))
         setTextColor(0xFFFFFFFF.toInt())
     }
+
+    private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
 
     private fun hideOverlay() {
         hideOverlay(stopRecording = true)
@@ -219,7 +224,11 @@ class QuietTypeAccessibilityService : AccessibilityService() {
         val label = overlayLabel(detection, state)
         val colorPreset = settingsStore.load().overlayColorPreset
         val color = overlayColorFor(state, colorPreset)
-        view.setBackgroundColor(color)
+        view.background = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dp(28).toFloat()
+            setColor(color)
+        }
         view.contentDescription = label
         (view.getChildAt(1) as? TextView)?.apply {
             text = label
@@ -488,7 +497,12 @@ class QuietTypeAccessibilityService : AccessibilityService() {
                     windowManager.updateViewLayout(view.parent as View, params)
                     return true
                 }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                MotionEvent.ACTION_UP -> {
+                    view.performClick()
+                    onMoved(OverlayPlacementPolicy.fromPx(params.x, params.y, density))
+                    return true
+                }
+                MotionEvent.ACTION_CANCEL -> {
                     onMoved(OverlayPlacementPolicy.fromPx(params.x, params.y, density))
                     return true
                 }
@@ -513,7 +527,18 @@ class QuietTypeAccessibilityService : AccessibilityService() {
                     )
                     return true
                 }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                MotionEvent.ACTION_UP -> {
+                    view.performClick()
+                    onDictationCommand(
+                        DictationInteractionController.onButtonUp(
+                            interaction = interaction(),
+                            isRecording = isRecording(),
+                            wasDragging = false,
+                        ),
+                    )
+                    return true
+                }
+                MotionEvent.ACTION_CANCEL -> {
                     onDictationCommand(
                         DictationInteractionController.onButtonUp(
                             interaction = interaction(),

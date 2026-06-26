@@ -1,5 +1,6 @@
 package dk.schulz.quiettype.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -10,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -17,12 +20,14 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,7 +38,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -130,6 +137,12 @@ fun QuietTypeHomeScreen(
         topBar = {
             TopAppBar(title = { Text(stringResource(R.string.app_name)) })
         },
+        bottomBar = {
+            SectionNavigationBar(
+                selectedSection = selectedSection,
+                onSelectedSectionChange = { selectedSection = it },
+            )
+        },
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -137,11 +150,6 @@ fun QuietTypeHomeScreen(
                 .padding(innerPadding),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            SectionChips(
-                selectedSection = selectedSection,
-                onSelectedSectionChange = { selectedSection = it },
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
-            )
             if (selectedSection == 2) {
                 QuietTypeModelsScreen(
                     modelCatalogState = modelCatalogState,
@@ -210,23 +218,28 @@ fun QuietTypeHomeScreen(
 }
 
 @Composable
-private fun SectionChips(
+private fun SectionNavigationBar(
     selectedSection: Int,
     onSelectedSectionChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
+    NavigationBar(modifier = modifier.fillMaxWidth()) {
         listOf("Setup", "Settings", "Models", "About").forEachIndexed { index, label ->
-            FilterChip(
+            NavigationBarItem(
                 selected = selectedSection == index,
                 onClick = { onSelectedSectionChange(index) },
                 label = { Text(label) },
+                icon = { Text(sectionIcon(index)) },
             )
         }
     }
+}
+
+private fun sectionIcon(index: Int): String = when (index) {
+    0 -> "①"
+    1 -> "⚙"
+    2 -> "↓"
+    else -> "ℹ"
 }
 
 @Composable
@@ -606,6 +619,26 @@ private fun QuietTypeModelsScreen(
     onDeleteModel: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var modelPendingDelete by remember { mutableStateOf<VoiceModel?>(null) }
+    modelPendingDelete?.let { model ->
+        AlertDialog(
+            onDismissRequest = { modelPendingDelete = null },
+            title = { Text("Delete downloaded model?") },
+            text = { Text("This removes ${model.name} from private app storage. You can download it again later.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        modelPendingDelete = null
+                        onDeleteModel(model.id)
+                    },
+                ) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { modelPendingDelete = null }) { Text("Cancel") }
+            },
+        )
+    }
+
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -657,7 +690,16 @@ private fun QuietTypeModelsScreen(
                 val downloaded = modelCatalogState.downloadedModelIds.contains(model.id)
                 val prepared = modelCatalogState.preparedModelIds.contains(model.id)
                 val downloadable = model.isOfflineCapable && model.runtime.requiredFiles.isNotEmpty()
-                Card(modifier = Modifier.fillMaxWidth()) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (selected) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        },
+                    ),
+                ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -675,11 +717,13 @@ private fun QuietTypeModelsScreen(
                             text = "${model.engine} · ${model.language} · ~${model.sizeMegabytes} MB · ${model.license}",
                             style = MaterialTheme.typography.bodySmall,
                         )
-                        Text(
-                            text = "Status: ${model.statusLabel(downloaded = downloaded, prepared = prepared, downloadable = downloadable)}${if (selected) " · selected" else ""}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            if (selected) StatusChip("Selected")
+                            StatusChip(model.statusLabel(downloaded = downloaded, prepared = prepared, downloadable = downloadable))
+                        }
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -691,21 +735,26 @@ private fun QuietTypeModelsScreen(
                             ) {
                                 Text(if (selected) "Selected" else "Select")
                             }
-                            Button(
-                                onClick = {
-                                    if (downloaded) onDeleteModel(model.id) else onDownloadModel(model.id)
-                                },
-                                enabled = !isModelDownloadActive && (downloaded || downloadable),
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Text(
-                                    when {
-                                        isModelDownloadActive -> "Busy"
-                                        downloaded -> "Delete"
-                                        downloadable -> "Download"
-                                        else -> "Unavailable"
-                                    },
-                                )
+                            if (downloaded) {
+                                OutlinedButton(
+                                    onClick = { modelPendingDelete = model },
+                                    enabled = !isModelDownloadActive,
+                                    modifier = Modifier.weight(1f),
+                                ) { Text("Delete") }
+                            } else {
+                                Button(
+                                    onClick = { onDownloadModel(model.id) },
+                                    enabled = !isModelDownloadActive && downloadable,
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Text(
+                                        when {
+                                            isModelDownloadActive -> "Busy"
+                                            downloadable -> "Download"
+                                            else -> "Unavailable"
+                                        },
+                                    )
+                                }
                             }
                         }
                     }
@@ -713,6 +762,14 @@ private fun QuietTypeModelsScreen(
             }
         }
     }
+}
+
+@Composable
+private fun StatusChip(label: String) {
+    AssistChip(
+        onClick = {},
+        label = { Text(label) },
+    )
 }
 
 private fun VoiceModel.statusLabel(downloaded: Boolean, prepared: Boolean, downloadable: Boolean): String = when {
@@ -815,7 +872,11 @@ private fun SettingSwitchCard(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(modifier = modifier.fillMaxWidth()) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Switch) { onCheckedChange(!checked) },
+    ) {
         Row(
             modifier = Modifier.padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -855,6 +916,7 @@ private fun microphoneStatusText(state: DictationSessionState): String = when {
 
 @Composable
 private fun QuietTypeAboutScreen(modifier: Modifier = Modifier) {
+    val uriHandler = LocalUriHandler.current
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -864,16 +926,33 @@ private fun QuietTypeAboutScreen(modifier: Modifier = Modifier) {
                 text = "QuietType is a privacy-first Android dictation app by Kim Schulz. It stays out of the way until an editable field is focused, then offers a small floating microphone button for on-device dictation.",
                 style = MaterialTheme.typography.bodyMedium,
             )
-            Text(
-                text = "Project: https://github.com/kimusan/quiettype",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary,
+            AboutLink(
+                label = "Project source",
+                url = "https://github.com/kimusan/VoiceMe",
+                onOpen = uriHandler::openUri,
+            )
+            AboutLink(
+                label = "Privacy policy",
+                url = "https://github.com/kimusan/VoiceMe/blob/main/PRIVACY.md",
+                onOpen = uriHandler::openUri,
+            )
+            AboutLink(
+                label = "Licenses and notices",
+                url = "https://github.com/kimusan/VoiceMe/blob/main/THIRD_PARTY_NOTICES.md",
+                onOpen = uriHandler::openUri,
             )
             Text(
-                text = "Current focus: reliable local ASR, clear onboarding, and transparent model downloads without telemetry or cloud transcription.",
+                text = "Version: 0.1.0-dev · Current focus: reliable local ASR, clear onboarding, and transparent model downloads without telemetry or cloud transcription.",
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
+    }
+}
+
+@Composable
+private fun AboutLink(label: String, url: String, onOpen: (String) -> Unit) {
+    TextButton(onClick = { onOpen(url) }, modifier = Modifier.fillMaxWidth()) {
+        Text("$label: $url")
     }
 }
 
