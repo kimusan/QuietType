@@ -40,7 +40,12 @@ class QuietTypeRecordingService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ActionStop) {
-            stopSelf()
+            keepRecording.set(false)
+            runCatching { recorder?.stop() }
+            when (RecordingSessionLifecycle.stopIntentAction(hasRunningWorker = recordingThread?.isAlive == true)) {
+                RecordingSessionLifecycle.StopIntentAction.SignalWorkerAndKeepServiceAlive -> notifyStatus("Processing QuietType dictation locally.")
+                RecordingSessionLifecycle.StopIntentAction.StopServiceNow -> stopSelf()
+            }
             return START_NOT_STICKY
         }
 
@@ -123,6 +128,7 @@ class QuietTypeRecordingService : Service() {
             recognizer?.release()
             broadcastProcessingState(false)
             keepRecording.set(false)
+            stopSelf()
         }
     }
 
@@ -192,7 +198,9 @@ class QuietTypeRecordingService : Service() {
             recorder = null
             stream?.release()
             recognizer?.release()
+            broadcastProcessingState(false)
             keepRecording.set(false)
+            stopSelf()
         }
     }
 
