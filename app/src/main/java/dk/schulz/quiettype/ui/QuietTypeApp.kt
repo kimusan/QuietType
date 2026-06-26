@@ -921,28 +921,57 @@ private fun QuietTypeAboutScreen(modifier: Modifier = Modifier) {
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        SettingsSectionCard(title = "About QuietType") {
+        SettingsSectionCard(title = "🎙️ What QuietType does") {
             Text(
-                text = "QuietType is a privacy-first Android dictation app by Kim Schulz. It stays out of the way until an editable field is focused, then offers a small floating microphone button for on-device dictation.",
+                text = "QuietType is a privacy-first Android dictation app by Kim Schulz. It stays out of the way until an editable field is focused, then offers a compact floating microphone control for on-device dictation.",
                 style = MaterialTheme.typography.bodyMedium,
             )
+            AboutBullet("Shows only when an editable field can receive text.")
+            AboutBullet("Uses local ASR models for dictation instead of cloud transcription.")
+            AboutBullet("Keeps model downloads explicit and user-started.")
+        }
+
+        SettingsSectionCard(title = "🛡️ Privacy posture") {
+            AboutBullet("No telemetry or analytics are built into this app.")
+            AboutBullet("Audio capture runs through Android foreground recording controls.")
+            AboutBullet("Downloaded models live in private app storage and can be deleted from Models.")
+        }
+
+        SettingsSectionCard(title = "📚 Project resources") {
             AboutLink(
+                icon = "⌂",
                 label = "Project source",
                 url = "https://github.com/kimusan/VoiceMe",
                 onOpen = uriHandler::openUri,
             )
             AboutLink(
+                icon = "🛡",
                 label = "Privacy policy",
                 url = "https://github.com/kimusan/VoiceMe/blob/main/PRIVACY.md",
                 onOpen = uriHandler::openUri,
             )
             AboutLink(
-                label = "Licenses and notices",
+                icon = "⚖",
+                label = "License",
+                url = "https://github.com/kimusan/VoiceMe/blob/main/LICENSE",
+                onOpen = uriHandler::openUri,
+            )
+            AboutLink(
+                icon = "📄",
+                label = "Third-party notices",
                 url = "https://github.com/kimusan/VoiceMe/blob/main/THIRD_PARTY_NOTICES.md",
                 onOpen = uriHandler::openUri,
             )
+        }
+
+        SettingsSectionCard(title = "ℹ️ Version") {
             Text(
-                text = "Version: 0.1.0-dev · Current focus: reliable local ASR, clear onboarding, and transparent model downloads without telemetry or cloud transcription.",
+                text = "0.1.0-dev",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "Current focus: reliable local ASR, clear onboarding, transparent model downloads, and a minimal keyboard-adjacent workflow.",
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
@@ -950,9 +979,34 @@ private fun QuietTypeAboutScreen(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun AboutLink(label: String, url: String, onOpen: (String) -> Unit) {
+private fun AboutBullet(text: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(text = "•", style = MaterialTheme.typography.bodyMedium)
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun AboutLink(icon: String, label: String, url: String, onOpen: (String) -> Unit) {
     TextButton(onClick = { onOpen(url) }, modifier = Modifier.fillMaxWidth()) {
-        Text("$label: $url")
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text = icon, style = MaterialTheme.typography.titleMedium)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(label, style = MaterialTheme.typography.labelLarge)
+                Text(url, style = MaterialTheme.typography.bodySmall)
+            }
+        }
     }
 }
 

@@ -153,7 +153,7 @@ class QuietTypeAccessibilityService : AccessibilityService() {
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             elevation = dp(6).toFloat()
-            setPadding(dp(4), dp(4), dp(4), dp(4))
+            setPadding(dp(3), dp(2), dp(3), dp(2))
         }
         val handle = overlayPart("☰").apply {
             contentDescription = "Drag QuietType floating dictation controls"
@@ -192,8 +192,8 @@ class QuietTypeAccessibilityService : AccessibilityService() {
         textSize = 16f
         gravity = Gravity.CENTER
         minWidth = dp(48)
-        minHeight = dp(48)
-        setPadding(dp(12), dp(8), dp(12), dp(8))
+        minHeight = dp(40)
+        setPadding(dp(10), dp(4), dp(10), dp(4))
         setTextColor(0xFFFFFFFF.toInt())
     }
 
