@@ -44,6 +44,49 @@ class FocusedFieldDetectorTest {
     }
 
     @Test
+    fun fieldsWithSensitiveMetadataHideOverlayEvenWhenPasswordFlagIsMissing() {
+        val cases = listOf(
+            FocusedFieldSnapshot(
+                packageName = "com.example.bank",
+                className = "android.widget.EditText",
+                viewIdResourceName = "com.example.bank:id/card_number",
+                hintText = "Card number",
+                isFocused = true,
+                isEditable = true,
+                isPassword = false,
+            ),
+            FocusedFieldSnapshot(
+                packageName = "com.example.auth",
+                className = "android.widget.EditText",
+                viewIdResourceName = "com.example.auth:id/otp_code",
+                hintText = "One-time code",
+                isFocused = true,
+                isEditable = true,
+                isPassword = false,
+            ),
+            FocusedFieldSnapshot(
+                packageName = "com.example.login",
+                className = "android.widget.EditText",
+                viewIdResourceName = "com.example.login:id/pin",
+                hintText = "PIN",
+                isFocused = true,
+                isEditable = true,
+                isPassword = false,
+            ),
+        )
+
+        cases.forEach { snapshot ->
+            val detection = FocusedFieldDetector.detect(
+                snapshot = snapshot,
+                settings = AppSettings.default(),
+            )
+
+            assertFalse(detection.shouldShowOverlay)
+            assertEquals(FocusedFieldHideReason.SensitiveField, detection.hideReason)
+        }
+    }
+
+    @Test
     fun passwordFieldsCanShowOverlayWhenSensitiveFieldProtectionIsDisabled() {
         val detection = FocusedFieldDetector.detect(
             snapshot = FocusedFieldSnapshot(

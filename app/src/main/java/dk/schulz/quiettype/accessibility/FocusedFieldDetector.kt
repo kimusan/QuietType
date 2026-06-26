@@ -113,7 +113,7 @@ object FocusedFieldDetector {
     fun detect(snapshot: FocusedFieldSnapshot, settings: AppSettings): FocusedFieldDetection = when {
         !snapshot.isFocused -> FocusedFieldDetection.hidden(FocusedFieldHideReason.NotFocused, snapshot)
         !snapshot.isEditable -> FocusedFieldDetection.hidden(FocusedFieldHideReason.NotEditable, snapshot)
-        settings.hideInSensitiveFields && snapshot.isPassword ->
+        settings.hideInSensitiveFields && FocusedFieldSensitivity.isSensitive(snapshot) ->
             FocusedFieldDetection.hidden(FocusedFieldHideReason.SensitiveField, snapshot)
         settings.hiddenTargets.any { it.matches(snapshot) } ->
             FocusedFieldDetection.hidden(FocusedFieldHideReason.UserHiddenTarget, snapshot)

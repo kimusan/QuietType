@@ -68,6 +68,29 @@ class TextInsertionDraftTest {
     }
 
     @Test
+    fun finalTranscriptReplacesSelectedTextOrInsertsAtCursor() {
+        val draft = TextInsertionDraft.from(
+            TextInsertionRequest(
+                focusedField = FocusedFieldSnapshot(
+                    packageName = "com.example.notes",
+                    className = "android.widget.EditText",
+                    isFocused = true,
+                    isEditable = true,
+                    isPassword = false,
+                ),
+                existingText = "hello brave world",
+                selectionStart = 6,
+                selectionEnd = 11,
+                transcript = "quiet",
+            ),
+        )
+
+        assertTrue(draft.canInsert)
+        assertEquals("hello quiet world", draft.textToSet)
+        assertEquals(11, draft.cursorPosition)
+    }
+
+    @Test
     fun passwordFieldsDoNotReceiveTextInsertion() {
         val draft = TextInsertionDraft.from(
             TextInsertionRequest(

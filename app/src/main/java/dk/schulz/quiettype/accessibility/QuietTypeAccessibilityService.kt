@@ -270,6 +270,8 @@ class QuietTypeAccessibilityService : AccessibilityService() {
                     focusedField = snapshot,
                     existingText = focusedNode.text?.toString().orEmpty(),
                     hintText = focusedNode.hintText?.toString(),
+                    selectionStart = focusedNode.textSelectionStart,
+                    selectionEnd = focusedNode.textSelectionEnd,
                     transcript = transcript,
                 ),
             )
@@ -285,6 +287,13 @@ class QuietTypeAccessibilityService : AccessibilityService() {
                 )
             }
             if (focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)) {
+                draft.cursorPosition?.let { cursor ->
+                    val selectionArguments = Bundle().apply {
+                        putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, cursor)
+                        putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, cursor)
+                    }
+                    focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, selectionArguments)
+                }
                 showToast("Inserted QuietType dictation.")
             } else {
                 showToast("This field does not accept accessibility text insertion.")
