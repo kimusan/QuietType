@@ -158,6 +158,58 @@ class ModelArtifactInstallerTest {
     }
 
     @Test
+    fun installerRejectsArchivesThatExceedExtractedByteLimit() {
+        val archiveBytes = modelArchiveBytes(
+            "sherpa-onnx/encoder.int8.onnx" to ByteArray(8) { 1 },
+            "sherpa-onnx/decoder.int8.onnx" to ByteArray(8) { 2 },
+            "sherpa-onnx/joiner.int8.onnx" to ByteArray(8) { 3 },
+            "sherpa-onnx/tokens.txt" to ByteArray(8) { 4 },
+        )
+        val model = ModelCatalog.default().recommended.copy(
+            artifact = ModelCatalog.default().recommended.artifact.copy(
+                sha256 = archiveBytes.sha256Hex(),
+            ),
+        )
+        val installer = ModelArtifactInstaller(
+            byteSource = FakeArtifactByteSource(archiveBytes),
+            modelRootDirectory = temporaryFolder.root,
+            extractionLimits = ModelArchiveExtractionLimits(maxEntries = 10, maxExtractedBytes = 16),
+        )
+
+        val result = installer.install(model)
+
+        assertTrue(result is ModelArtifactInstallResult.InstallFailed)
+        result as ModelArtifactInstallResult.InstallFailed
+        assertTrue(result.reason.contains("too large", ignoreCase = true))
+    }
+
+    @Test
+    fun installerRejectsArchivesThatExceedEntryLimit() {
+        val archiveBytes = modelArchiveBytes(
+            "sherpa-onnx/encoder.int8.onnx" to "fake encoder".encodeToByteArray(),
+            "sherpa-onnx/decoder.int8.onnx" to "fake decoder".encodeToByteArray(),
+            "sherpa-onnx/joiner.int8.onnx" to "fake joiner".encodeToByteArray(),
+            "sherpa-onnx/tokens.txt" to "<blk>".encodeToByteArray(),
+        )
+        val model = ModelCatalog.default().recommended.copy(
+            artifact = ModelCatalog.default().recommended.artifact.copy(
+                sha256 = archiveBytes.sha256Hex(),
+            ),
+        )
+        val installer = ModelArtifactInstaller(
+            byteSource = FakeArtifactByteSource(archiveBytes),
+            modelRootDirectory = temporaryFolder.root,
+            extractionLimits = ModelArchiveExtractionLimits(maxEntries = 2, maxExtractedBytes = 1024),
+        )
+
+        val result = installer.install(model)
+
+        assertTrue(result is ModelArtifactInstallResult.InstallFailed)
+        result as ModelArtifactInstallResult.InstallFailed
+        assertTrue(result.reason.contains("too many", ignoreCase = true))
+    }
+
+    @Test
     fun installerReportsByteProgressWhileDownloading() {
         val modelBytes = "1234567890".encodeToByteArray()
         val model = ModelCatalog.default().recommended.copy(
@@ -177,6 +229,30 @@ class ModelArtifactInstallerTest {
         assertTrue(result is ModelArtifactInstallResult.Installed)
         assertEquals(listOf(50, 100), progressEvents.map { it.percent })
         assertEquals(listOf(5L, 10L), progressEvents.map { it.bytesRead })
+    }
+
+    @Test
+    fun installerFailsBeforeDownloadWhenFreeSpaceIsTooLow() {
+        val modelBytes = "QuietType model bytes".encodeToByteArray()
+        val model = ModelCatalog.default().recommended.copy(
+            sizeMegabytes = 1,
+            artifact = ModelCatalog.default().recommended.artifact.copy(
+                sha256 = modelBytes.sha256Hex(),
+                fileName = "fake-model.bin",
+            ),
+        )
+        val installer = ModelArtifactInstaller(
+            byteSource = FakeArtifactByteSource(modelBytes),
+            modelRootDirectory = temporaryFolder.root,
+            availableBytes = { 16L },
+        )
+
+        val result = installer.install(model)
+
+        assertTrue(result is ModelArtifactInstallResult.InstallFailed)
+        result as ModelArtifactInstallResult.InstallFailed
+        assertTrue(result.reason.contains("space", ignoreCase = true))
+        assertFalse(temporaryFolder.root.walkTopDown().any { it.isFile })
     }
 
     @Test

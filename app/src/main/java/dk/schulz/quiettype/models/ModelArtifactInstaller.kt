@@ -27,8 +27,20 @@ object HttpsArtifactByteSource : ArtifactByteSource {
         connection.connectTimeout = TimeoutMillis
         connection.readTimeout = TimeoutMillis
         connection.instanceFollowRedirects = true
+        HttpDownloadPolicy.requireSuccessfulStatus(connection.responseCode)
         return ArtifactDownloadStream(
-            inputStream = connection.inputStream,
+            inputStream = object : InputStream() {
+                private val delegate = connection.inputStream
+
+                override fun read(): Int = delegate.read()
+
+                override fun read(buffer: ByteArray, offset: Int, length: Int): Int = delegate.read(buffer, offset, length)
+
+                override fun close() {
+                    runCatching { delegate.close() }
+                    connection.disconnect()
+                }
+            },
             totalBytes = connection.contentLengthLong,
         )
     }
@@ -51,9 +63,16 @@ sealed class ModelArtifactInstallResult {
     ) : ModelArtifactInstallResult()
 }
 
+data class ModelArchiveExtractionLimits(
+    val maxEntries: Int = 4_096,
+    val maxExtractedBytes: Long = 2L * 1024L * 1024L * 1024L,
+)
+
 class ModelArtifactInstaller(
     private val byteSource: ArtifactByteSource = HttpsArtifactByteSource,
     private val modelRootDirectory: File,
+    private val extractionLimits: ModelArchiveExtractionLimits = ModelArchiveExtractionLimits(),
+    private val availableBytes: () -> Long = { modelRootDirectory.usableSpace },
 ) {
     fun install(
         model: VoiceModel,
@@ -65,6 +84,13 @@ class ModelArtifactInstaller(
         val runtimeDirectory = model.runtimeDirectory()
         val digest = MessageDigest.getInstance("SHA-256")
         val fallbackTotalBytes = model.sizeMegabytes.toLong() * 1024L * 1024L
+        val requiredFreeBytes = fallbackTotalBytes * 2L
+        if (availableBytes() < requiredFreeBytes) {
+            model.directory().deleteRecursively()
+            return ModelArtifactInstallResult.InstallFailed(
+                "Not enough free space to download and prepare ${model.name}. Need at least ${requiredFreeBytes / (1024L * 1024L)} MB available.",
+            )
+        }
 
         val download = byteSource.open(model.artifact)
         val totalBytes = if (download.totalBytes > 0L) download.totalBytes else fallbackTotalBytes
@@ -133,10 +159,16 @@ class ModelArtifactInstaller(
         runtimeDirectory.deleteRecursively()
         runtimeDirectory.mkdirs()
         return runCatching {
+            var extractedEntries = 0
+            var extractedBytes = 0L
             TarArchiveInputStream(BZip2CompressorInputStream(BufferedInputStream(artifactFile.inputStream()))).use { tar ->
                 while (true) {
                     val entry = tar.nextEntry ?: break
                     if (entry.isDirectory) continue
+                    extractedEntries += 1
+                    if (extractedEntries > extractionLimits.maxEntries) {
+                        return RuntimeExtractionResult.Failed("Model archive contains too many files")
+                    }
 
                     if (entry.name.startsWith("/") || entry.name.split('/').any { it == ".." }) {
                         return RuntimeExtractionResult.Failed("Model archive entry escapes runtime directory: ${entry.name}")
@@ -149,7 +181,18 @@ class ModelArtifactInstaller(
                     if (!canonicalOutput.path.startsWith(canonicalRuntime.path + File.separator)) {
                         return RuntimeExtractionResult.Failed("Model archive entry escapes runtime directory: ${entry.name}")
                     }
-                    outputFile.outputStream().use { output -> tar.copyTo(output) }
+                    outputFile.outputStream().use { output ->
+                        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                        while (true) {
+                            val read = tar.read(buffer)
+                            if (read == -1) break
+                            extractedBytes += read.toLong()
+                            if (extractedBytes > extractionLimits.maxExtractedBytes) {
+                                return RuntimeExtractionResult.Failed("Model archive is too large to extract safely")
+                            }
+                            output.write(buffer, 0, read)
+                        }
+                    }
                 }
             }
             if (model.runtime.requiredFiles.all { runtimeDirectory.resolve(it).isFile }) {
