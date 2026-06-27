@@ -58,4 +58,34 @@ class ModelCatalogTest {
         assertTrue(catalog.models.none { it.runtime.kind == ModelRuntimeKind.UnsupportedMobileBenchmark })
     }
 
+
+    @Test
+    fun catalogProvidesLanguageProfilesWithValidDefaultModels() {
+        val catalog = ModelCatalog.default()
+
+        assertEquals("da-multilingual", catalog.defaultProfile.id)
+        assertTrue(catalog.defaultProfile.displayName.contains("Danish", ignoreCase = true))
+        assertTrue(catalog.defaultProfile.preferredLanguageTags.contains("da"))
+        assertTrue(catalog.languageProfiles.size >= 3)
+        assertTrue(catalog.languageProfiles.all { profile -> catalog.modelById(profile.defaultModelId) != null })
+    }
+
+    @Test
+    fun selectingLanguageProfileSwitchesToProfileDefaultModel() {
+        val state = ModelCatalogState.default()
+        val englishProfile = state.catalog.profileById("en-fast") ?: error("missing English profile")
+
+        val updated = state.selectLanguageProfile(englishProfile.id)
+
+        assertEquals(englishProfile.id, updated.selectedLanguageProfileId)
+        assertEquals(englishProfile.defaultModelId, updated.selectedModelId)
+    }
+
+    @Test
+    fun invalidLanguageProfileSelectionIsIgnored() {
+        val state = ModelCatalogState.default()
+
+        assertEquals(state, state.selectLanguageProfile("missing-profile"))
+    }
+
 }

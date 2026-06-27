@@ -25,15 +25,50 @@ enum class ModelRuntimeKind {
     UnsupportedMobileBenchmark,
 }
 
+data class LanguageProfile(
+    val id: String,
+    val displayName: String,
+    val description: String,
+    val preferredLanguageTags: List<String>,
+    val defaultModelId: String,
+)
+
 data class ModelCatalog(
     val models: List<VoiceModel>,
+    val languageProfiles: List<LanguageProfile>,
 ) {
     val recommended: VoiceModel = models.first()
+    val defaultProfile: LanguageProfile = languageProfiles.first()
 
     fun modelById(modelId: String): VoiceModel? = models.firstOrNull { it.id == modelId }
 
+    fun profileById(profileId: String): LanguageProfile? = languageProfiles.firstOrNull { it.id == profileId }
+
     companion object {
         fun default(): ModelCatalog = ModelCatalog(
+            languageProfiles = listOf(
+                LanguageProfile(
+                    id = "da-multilingual",
+                    displayName = "Danish + multilingual",
+                    description = "Best default for Danish dictation and mixed European-language notes. Uses the multilingual Parakeet model.",
+                    preferredLanguageTags = listOf("da", "en", "de", "sv", "no"),
+                    defaultModelId = "sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8",
+                ),
+                LanguageProfile(
+                    id = "en-fast",
+                    displayName = "English low latency",
+                    description = "Small streaming English profile for faster experiments and lower-latency correction workflows.",
+                    preferredLanguageTags = listOf("en"),
+                    defaultModelId = "sherpa-onnx-streaming-zipformer-en-int8",
+                ),
+                LanguageProfile(
+                    id = "compact-multilingual",
+                    displayName = "Compact multilingual",
+                    description = "Smaller multilingual fallback when storage or download size matters more than Danish-first quality.",
+                    preferredLanguageTags = listOf("en", "de", "fr", "es", "it", "pl", "uk"),
+                    defaultModelId = "sherpa-onnx-nemo-fast-conformer-ctc-multilingual-int8",
+                ),
+            ),
             models = listOf(
                 VoiceModel(
                     id = "sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8",
@@ -130,9 +165,11 @@ data class ModelCatalogState(
     val selectedModelId: String,
     val downloadedModelIds: Set<String>,
     val preparedModelIds: Set<String> = emptySet(),
+    val selectedLanguageProfileId: String = ModelCatalog.default().defaultProfile.id,
     val catalog: ModelCatalog = ModelCatalog.default(),
 ) {
     val selectedModel: VoiceModel = catalog.modelById(selectedModelId) ?: catalog.recommended
+    val selectedLanguageProfile: LanguageProfile = catalog.profileById(selectedLanguageProfileId) ?: catalog.defaultProfile
     val selectedInstallState: ModelInstallState = when {
         preparedModelIds.contains(selectedModel.id) -> ModelInstallState.PreparedForDictation
         downloadedModelIds.contains(selectedModel.id) -> ModelInstallState.DownloadedArchive
@@ -146,12 +183,25 @@ data class ModelCatalogState(
         copy(selectedModelId = modelId)
     }
 
-    companion object {
-        fun default(): ModelCatalogState = ModelCatalogState(
-            selectedModelId = ModelCatalog.default().recommended.id,
-            downloadedModelIds = emptySet(),
-            preparedModelIds = emptySet(),
+    fun selectLanguageProfile(profileId: String): ModelCatalogState {
+        val profile = catalog.profileById(profileId) ?: return this
+        return copy(
+            selectedLanguageProfileId = profile.id,
+            selectedModelId = profile.defaultModelId,
         )
+    }
+
+    companion object {
+        fun default(): ModelCatalogState {
+            val catalog = ModelCatalog.default()
+            return ModelCatalogState(
+                selectedModelId = catalog.defaultProfile.defaultModelId,
+                selectedLanguageProfileId = catalog.defaultProfile.id,
+                downloadedModelIds = emptySet(),
+                preparedModelIds = emptySet(),
+                catalog = catalog,
+            )
+        }
     }
 }
 

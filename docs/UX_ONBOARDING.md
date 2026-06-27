@@ -69,3 +69,10 @@
 - History is off by default and can be enabled from Settings or the empty History screen.
 - Saved entries are local-only successful final dictations. Live partial text and raw audio are not saved.
 - Users can copy an entry for pasting/reinsertion, delete one entry, or clear all history.
+
+
+## Model/language profiles
+
+- The Models screen starts with friendly profiles instead of requiring users to understand ASR runtimes first.
+- Danish + multilingual is the default profile and selects the Parakeet v3 multilingual model.
+- Compact multilingual and English low-latency profiles switch to smaller/faster candidate models while still allowing manual model selection below.

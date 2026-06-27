@@ -50,6 +50,7 @@ import dk.schulz.quiettype.dictation.DictationBlockReason
 import dk.schulz.quiettype.accessibility.QuietTypeAccessibilityPresentation
 import dk.schulz.quiettype.dictation.DictationSessionState
 import dk.schulz.quiettype.history.DictationHistoryEntry
+import dk.schulz.quiettype.models.LanguageProfile
 import dk.schulz.quiettype.models.ModelCatalogState
 import dk.schulz.quiettype.models.ModelDownloadProgress
 import dk.schulz.quiettype.models.VoiceModel
@@ -81,6 +82,7 @@ fun QuietTypeApp(
     onStartRecordingShell: () -> Unit = {},
     onStopRecordingShell: () -> Unit = {},
     onSelectModel: (String) -> Unit = {},
+    onSelectLanguageProfile: (String) -> Unit = {},
     onDownloadModel: (String) -> Unit = {},
     onDeleteModel: (String) -> Unit = {},
     onCopyHistoryEntry: (DictationHistoryEntry) -> Unit = {},
@@ -103,6 +105,7 @@ fun QuietTypeApp(
             onStartRecordingShell = onStartRecordingShell,
             onStopRecordingShell = onStopRecordingShell,
             onSelectModel = onSelectModel,
+            onSelectLanguageProfile = onSelectLanguageProfile,
             onDownloadModel = onDownloadModel,
             onDeleteModel = onDeleteModel,
             onCopyHistoryEntry = onCopyHistoryEntry,
@@ -129,6 +132,7 @@ fun QuietTypeHomeScreen(
     onStartRecordingShell: () -> Unit,
     onStopRecordingShell: () -> Unit,
     onSelectModel: (String) -> Unit,
+    onSelectLanguageProfile: (String) -> Unit,
     onDownloadModel: (String) -> Unit,
     onDeleteModel: (String) -> Unit,
     onCopyHistoryEntry: (DictationHistoryEntry) -> Unit,
@@ -172,6 +176,7 @@ fun QuietTypeHomeScreen(
                     modelDownloadProgress = modelDownloadProgress,
                     isModelDownloadActive = isModelDownloadActive,
                     onSelectModel = onSelectModel,
+                    onSelectLanguageProfile = onSelectLanguageProfile,
                     onDownloadModel = onDownloadModel,
                     onDeleteModel = onDeleteModel,
                     modifier = Modifier
@@ -648,6 +653,7 @@ private fun QuietTypeModelsScreen(
     modelDownloadProgress: ModelDownloadProgress?,
     isModelDownloadActive: Boolean,
     onSelectModel: (String) -> Unit,
+    onSelectLanguageProfile: (String) -> Unit,
     onDownloadModel: (String) -> Unit,
     onDeleteModel: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -684,6 +690,21 @@ private fun QuietTypeModelsScreen(
             text = "Downloads only start when you tap Download. QuietType uses HTTPS to fetch the selected model archive, verifies SHA-256 before storing it, and then keeps dictation on-device. Downloaded archives are not dictation-ready until runtime preparation succeeds.",
             style = MaterialTheme.typography.bodyLarge,
         )
+        SettingsSectionCard(title = "Language profile") {
+            Text(
+                text = "Pick the profile that best matches what you dictate. This switches to the recommended local model for that language mix; you can still choose another model below.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            modelCatalogState.catalog.languageProfiles.forEach { profile ->
+                LanguageProfileRow(
+                    profile = profile,
+                    selected = profile.id == modelCatalogState.selectedLanguageProfile.id,
+                    recommendedModelName = modelCatalogState.catalog.modelById(profile.defaultModelId)?.name.orEmpty(),
+                    enabled = !isModelDownloadActive,
+                    onSelect = { onSelectLanguageProfile(profile.id) },
+                )
+            }
+        }
         modelDownloadStatus?.let { status ->
             StatusCard(
                 title = "Model download status",
@@ -792,6 +813,62 @@ private fun QuietTypeModelsScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LanguageProfileRow(
+    profile: LanguageProfile,
+    selected: Boolean,
+    recommendedModelName: String,
+    enabled: Boolean,
+    onSelect: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled && !selected) { onSelect() },
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) {
+                MaterialTheme.colorScheme.secondaryContainer
+            } else {
+                MaterialTheme.colorScheme.surface
+            },
+        ),
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = profile.displayName,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = profile.description,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Text(
+                    text = "Recommended: $recommendedModelName",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+            if (selected) {
+                StatusChip("Active")
+            } else {
+                OutlinedButton(
+                    onClick = onSelect,
+                    enabled = enabled,
+                ) { Text("Use") }
             }
         }
     }
@@ -1151,6 +1228,7 @@ private fun QuietTypeHomeScreenPreview() {
             onStartRecordingShell = {},
             onStopRecordingShell = {},
             onSelectModel = {},
+            onSelectLanguageProfile = {},
             onDownloadModel = {},
             onDeleteModel = {},
             onCopyHistoryEntry = {},

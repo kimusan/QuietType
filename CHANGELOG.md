@@ -18,6 +18,7 @@ The format follows Keep a Changelog principles, and versions should follow seman
 
 ### Added
 
+- Model/language profiles on the Models screen for Danish/multilingual, compact multilingual, and English low-latency workflows; selecting a profile switches to its recommended local ASR model.
 - Optional local-only dictation history with an off-by-default setting, History screen, copy/delete/clear controls, and final-transcript-only recording after successful insertion.
 - Initial product, architecture, privacy, permissions, UX, and release planning documents.
 - Android/Kotlin project bootstrap with Gradle wrapper, Compose Material 3 app shell, dynamic color theme, debug/release build configuration, and a unit test.

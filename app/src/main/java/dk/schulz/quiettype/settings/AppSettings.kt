@@ -26,6 +26,7 @@ data class AppSettings(
     val liveSentenceInsertionEnabled: Boolean,
     val hideInSensitiveFields: Boolean,
     val selectedModelId: String,
+    val selectedLanguageProfileId: String,
     val downloadedModelIds: Set<String>,
     val preparedModelIds: Set<String>,
     val overlayOffsetXDp: Int,
@@ -46,7 +47,8 @@ data class AppSettings(
             transcriptHistoryEnabled = false,
             liveSentenceInsertionEnabled = false,
             hideInSensitiveFields = true,
-            selectedModelId = ModelCatalog.default().recommended.id,
+            selectedModelId = ModelCatalog.default().defaultProfile.defaultModelId,
+            selectedLanguageProfileId = ModelCatalog.default().defaultProfile.id,
             downloadedModelIds = emptySet(),
             preparedModelIds = emptySet(),
             overlayOffsetXDp = OverlayPlacementPolicy.DefaultPosition.xDp,
@@ -65,6 +67,7 @@ object AppSettingsCodec {
     private const val LiveSentenceInsertionEnabled = "liveSentenceInsertionEnabled"
     private const val HideInSensitiveFields = "hideInSensitiveFields"
     private const val SelectedModelId = "selectedModelId"
+    private const val SelectedLanguageProfileId = "selectedLanguageProfileId"
     private const val DownloadedModelIds = "downloadedModelIds"
     private const val PreparedModelIds = "preparedModelIds"
     private const val OverlayOffsetXDp = "overlayOffsetXDp"
@@ -80,6 +83,7 @@ object AppSettingsCodec {
         LiveSentenceInsertionEnabled to settings.liveSentenceInsertionEnabled.toString(),
         HideInSensitiveFields to settings.hideInSensitiveFields.toString(),
         SelectedModelId to settings.selectedModelId,
+        SelectedLanguageProfileId to settings.selectedLanguageProfileId,
         DownloadedModelIds to settings.downloadedModelIds.sorted().joinToString(","),
         PreparedModelIds to settings.preparedModelIds.sorted().joinToString(","),
         OverlayOffsetXDp to settings.overlayOffsetXDp.toString(),
@@ -105,6 +109,8 @@ object AppSettingsCodec {
                 ?: defaults.hideInSensitiveFields,
             selectedModelId = values[SelectedModelId]?.takeIf { it.isNotBlank() }
                 ?: defaults.selectedModelId,
+            selectedLanguageProfileId = values[SelectedLanguageProfileId]?.takeIf { it.isNotBlank() }
+                ?: defaults.selectedLanguageProfileId,
             downloadedModelIds = values[DownloadedModelIds]?.split(',')
                 ?.map { it.trim() }
                 ?.filter { it.isNotBlank() }

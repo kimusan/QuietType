@@ -17,6 +17,7 @@ class AppSettingsTest {
         assertFalse(settings.transcriptHistoryEnabled)
         assertFalse(settings.liveSentenceInsertionEnabled)
         assertTrue(settings.hideInSensitiveFields)
+        assertEquals("da-multilingual", settings.selectedLanguageProfileId)
         assertEquals(16, settings.overlayOffsetXDp)
         assertTrue(settings.overlayOffsetYDp >= 320)
     }
@@ -42,6 +43,7 @@ class AppSettingsTest {
             liveSentenceInsertionEnabled = true,
             hideInSensitiveFields = true,
             selectedModelId = AppSettings.default().selectedModelId,
+            selectedLanguageProfileId = "en-fast",
             downloadedModelIds = setOf("sherpa-onnx-streaming-zipformer-en-int8"),
             preparedModelIds = setOf("sherpa-onnx-streaming-zipformer-en-int8"),
             overlayOffsetXDp = 42,

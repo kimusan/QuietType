@@ -69,6 +69,7 @@ Then manually verify:
 6. Model download is explicit, HTTPS-only, SHA-256 verified, and stored under app-private storage.
 7. Downloaded archive state is not presented as ASR-ready until runtime preparation succeeds.
 8. Dictation history is off by default; when enabled, successful final dictations appear in History and copy/delete/clear controls work.
+9. Model/language profile switching selects the documented recommended model and does not mark a model ready until download/preparation succeeds.
 
 ## Signing
 

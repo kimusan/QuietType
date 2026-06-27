@@ -95,6 +95,16 @@ class MainActivity : ComponentActivity() {
                 onSelectModel = { modelId ->
                     saveSettings(appSettings.copy(selectedModelId = modelId))
                 },
+                onSelectLanguageProfile = { profileId ->
+                    modelCatalogState().catalog.profileById(profileId)?.let { profile ->
+                        saveSettings(
+                            appSettings.copy(
+                                selectedLanguageProfileId = profile.id,
+                                selectedModelId = profile.defaultModelId,
+                            ),
+                        )
+                    }
+                },
                 onDownloadModel = { modelId ->
                     startModelDownload(
                         modelId = modelId,
@@ -190,6 +200,7 @@ class MainActivity : ComponentActivity() {
 
     private fun modelCatalogState(): ModelCatalogState = ModelCatalogState(
         selectedModelId = appSettings.selectedModelId,
+        selectedLanguageProfileId = appSettings.selectedLanguageProfileId,
         downloadedModelIds = appSettings.downloadedModelIds,
         preparedModelIds = appSettings.preparedModelIds,
     )
