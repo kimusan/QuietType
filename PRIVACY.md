@@ -7,6 +7,7 @@ QuietType is designed to be privacy-first. This document describes the intended 
 - Voice dictation is processed on-device by default.
 - Audio is not sent to cloud transcription services.
 - Transcripts are not sent to the developer.
+- Dictation history is off by default; if enabled, saved entries stay in private app storage and can be deleted.
 - No analytics or telemetry are enabled by default.
 - Any network use must be visible, user-initiated, and documented here.
 
@@ -16,7 +17,7 @@ QuietType uses the microphone only while the user actively starts dictation. Hol
 
 ## Transcripts
 
-Dictated text is inserted into the user's chosen input field. The Accessibility service receives final transcript broadcasts from the local dictation service and reads the focused node's existing text at insertion time so it can append the recognized text instead of overwriting the field. QuietType should not store transcript history by default. If transcript history is added later, it must be local-only, opt-in, and deletable from settings.
+Dictated text is inserted into the user's chosen input field. The Accessibility service receives final transcript broadcasts from the local dictation service and reads the focused node's existing text at insertion time so it can append the recognized text instead of overwriting the field. Transcript history is off by default. If the user enables local history, QuietType saves only successful final dictation text entries in private app storage, never raw audio or live partial text. The History screen lets the user copy individual entries, delete individual entries, or clear all saved entries.
 
 ## Accessibility service
 
@@ -40,7 +41,7 @@ Crash reports, logs, analytics, or diagnostics must be off by default unless imp
 
 ## Data deletion
 
-Settings must provide controls to delete downloaded models, local preferences, and any optional history if such history exists.
+Settings and History provide controls to delete downloaded models, local preferences, individual history entries, and all saved history entries.
 
 ## Third parties
 

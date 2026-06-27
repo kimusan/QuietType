@@ -35,6 +35,7 @@ QuietType is planned as a privacy-first app:
 - Network access is limited to explicit user-initiated model downloads or future release/update metadata.
 - Model files are downloaded over HTTPS only after user action and are SHA-256 verified before being stored as downloaded archives.
 - A downloaded archive is not considered dictation-ready until a runtime preparation step verifies the files needed by the ASR engine.
+- Optional dictation history is off by default, local-only when enabled, and deletable from the History screen.
 - Users can delete downloaded models and local data from settings.
 
 See `PRIVACY.md`, `docs/THREAT_MODEL.md`, and `docs/PERMISSIONS.md` for details.
@@ -48,7 +49,7 @@ QuietType is not released yet. Planned release channels:
 
 ## Development status
 
-The project has an Android/Kotlin/Compose prototype with interactive Material 3 setup, settings, models, and About screens. Onboarding/settings/model choices are persisted locally. The app can download and verify sherpa-onnx model archives with a Material progress bar and percentage text, unpack prepared runtime files, start a foreground local `AudioRecord` + sherpa-onnx dictation session from the floating overlay, and broadcast final transcripts back to the Accessibility service for focused-field insertion. The Models screen starts explicit HTTPS model downloads, verifies SHA-256 before storing a downloaded/prepared marker, and deletes private model files. The default Parakeet TDT v3 int8 archive is locked to a real GitHub release URL and SHA-256 checksum. It is still not public-release-ready: Danish live insertion needs chunked offline recognition, and production release polish remains future work. A local-only `ROADMAP.md` file may exist in developer checkouts and is intentionally ignored by git. Tracked planning and release documents live under `docs/`.
+The project has an Android/Kotlin/Compose prototype with interactive Material 3 setup, settings, models, History, and About screens. Onboarding/settings/model choices are persisted locally. The app can download and verify sherpa-onnx model archives with a Material progress bar and percentage text, unpack prepared runtime files, start a foreground local `AudioRecord` + sherpa-onnx dictation session from the floating overlay, and broadcast final transcripts back to the Accessibility service for focused-field insertion. Successful final dictations can optionally be saved to local-only history for later copying/deletion. The Models screen starts explicit HTTPS model downloads, verifies SHA-256 before storing a downloaded/prepared marker, and deletes private model files. The default Parakeet TDT v3 int8 archive is locked to a real GitHub release URL and SHA-256 checksum. It is still not public-release-ready: Danish live insertion needs chunked offline recognition, and production release polish remains future work. A local-only `ROADMAP.md` file may exist in developer checkouts and is intentionally ignored by git. Tracked planning and release documents live under `docs/`.
 
 ## Build from source
 

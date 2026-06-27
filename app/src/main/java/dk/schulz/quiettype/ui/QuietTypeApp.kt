@@ -49,6 +49,7 @@ import dk.schulz.quiettype.R
 import dk.schulz.quiettype.dictation.DictationBlockReason
 import dk.schulz.quiettype.accessibility.QuietTypeAccessibilityPresentation
 import dk.schulz.quiettype.dictation.DictationSessionState
+import dk.schulz.quiettype.history.DictationHistoryEntry
 import dk.schulz.quiettype.models.ModelCatalogState
 import dk.schulz.quiettype.models.ModelDownloadProgress
 import dk.schulz.quiettype.models.VoiceModel
@@ -61,6 +62,8 @@ import dk.schulz.quiettype.settings.AppSettings
 import dk.schulz.quiettype.settings.DictationInteraction
 import dk.schulz.quiettype.settings.OverlayColorPreset
 import dk.schulz.quiettype.ui.theme.QuietTypeTheme
+import java.text.DateFormat
+import java.util.Date
 
 @Composable
 fun QuietTypeApp(
@@ -71,6 +74,7 @@ fun QuietTypeApp(
     modelDownloadProgress: ModelDownloadProgress? = null,
     isModelDownloadActive: Boolean = false,
     isAccessibilityEnabled: Boolean = false,
+    historyEntries: List<DictationHistoryEntry> = emptyList(),
     onSettingsChange: (AppSettings) -> Unit = {},
     onOpenAccessibilitySettings: () -> Unit = {},
     onRequestMicrophonePermission: () -> Unit = {},
@@ -79,6 +83,9 @@ fun QuietTypeApp(
     onSelectModel: (String) -> Unit = {},
     onDownloadModel: (String) -> Unit = {},
     onDeleteModel: (String) -> Unit = {},
+    onCopyHistoryEntry: (DictationHistoryEntry) -> Unit = {},
+    onDeleteHistoryEntry: (String) -> Unit = {},
+    onClearHistory: () -> Unit = {},
 ) {
     QuietTypeTheme {
         QuietTypeHomeScreen(
@@ -89,6 +96,7 @@ fun QuietTypeApp(
             modelDownloadProgress = modelDownloadProgress,
             isModelDownloadActive = isModelDownloadActive,
             isAccessibilityEnabled = isAccessibilityEnabled,
+            historyEntries = historyEntries,
             onSettingsChange = onSettingsChange,
             onOpenAccessibilitySettings = onOpenAccessibilitySettings,
             onRequestMicrophonePermission = onRequestMicrophonePermission,
@@ -97,6 +105,9 @@ fun QuietTypeApp(
             onSelectModel = onSelectModel,
             onDownloadModel = onDownloadModel,
             onDeleteModel = onDeleteModel,
+            onCopyHistoryEntry = onCopyHistoryEntry,
+            onDeleteHistoryEntry = onDeleteHistoryEntry,
+            onClearHistory = onClearHistory,
         )
     }
 }
@@ -111,6 +122,7 @@ fun QuietTypeHomeScreen(
     modelDownloadProgress: ModelDownloadProgress?,
     isModelDownloadActive: Boolean,
     isAccessibilityEnabled: Boolean,
+    historyEntries: List<DictationHistoryEntry>,
     onSettingsChange: (AppSettings) -> Unit,
     onOpenAccessibilitySettings: () -> Unit,
     onRequestMicrophonePermission: () -> Unit,
@@ -119,6 +131,9 @@ fun QuietTypeHomeScreen(
     onSelectModel: (String) -> Unit,
     onDownloadModel: (String) -> Unit,
     onDeleteModel: (String) -> Unit,
+    onCopyHistoryEntry: (DictationHistoryEntry) -> Unit,
+    onDeleteHistoryEntry: (String) -> Unit,
+    onClearHistory: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val onboardingFlow = remember { OnboardingFlow.default() }
@@ -209,6 +224,15 @@ fun QuietTypeHomeScreen(
                             onStopRecordingShell = onStopRecordingShell,
                         )
 
+                        3 -> QuietTypeHistoryScreen(
+                            historyEntries = historyEntries,
+                            historyEnabled = appSettings.transcriptHistoryEnabled,
+                            onCopyHistoryEntry = onCopyHistoryEntry,
+                            onDeleteHistoryEntry = onDeleteHistoryEntry,
+                            onClearHistory = onClearHistory,
+                            onEnableHistory = { onSettingsChange(appSettings.copy(transcriptHistoryEnabled = true)) },
+                        )
+
                         else -> QuietTypeAboutScreen()
                     }
                 }
@@ -224,7 +248,7 @@ private fun SectionNavigationBar(
     modifier: Modifier = Modifier,
 ) {
     NavigationBar(modifier = modifier.fillMaxWidth()) {
-        listOf("Setup", "Settings", "Models", "About").forEachIndexed { index, label ->
+        listOf("Setup", "Settings", "Models", "History", "About").forEachIndexed { index, label ->
             NavigationBarItem(
                 selected = selectedSection == index,
                 onClick = { onSelectedSectionChange(index) },
@@ -239,6 +263,7 @@ private fun sectionIcon(index: Int): String = when (index) {
     0 -> "①"
     1 -> "⚙"
     2 -> "↓"
+    3 -> "↺"
     else -> "ℹ"
 }
 
@@ -513,6 +538,14 @@ private fun QuietTypeSettingsPreview(
             checked = appSettings.liveSentenceInsertionEnabled,
             onCheckedChange = { enabled ->
                 onSettingsChange(appSettings.copy(liveSentenceInsertionEnabled = enabled))
+            },
+        )
+        SettingSwitchCard(
+            title = "Save local dictation history",
+            body = "Off by default. When enabled, successful final dictations are saved only in private app storage so you can copy or delete them from History.",
+            checked = appSettings.transcriptHistoryEnabled,
+            onCheckedChange = { enabled ->
+                onSettingsChange(appSettings.copy(transcriptHistoryEnabled = enabled))
             },
         )
         SettingSwitchCard(
@@ -915,6 +948,95 @@ private fun microphoneStatusText(state: DictationSessionState): String = when {
 }
 
 @Composable
+private fun QuietTypeHistoryScreen(
+    historyEntries: List<DictationHistoryEntry>,
+    historyEnabled: Boolean,
+    onCopyHistoryEntry: (DictationHistoryEntry) -> Unit,
+    onDeleteHistoryEntry: (String) -> Unit,
+    onClearHistory: () -> Unit,
+    onEnableHistory: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text(
+            text = "Dictation history",
+            style = MaterialTheme.typography.headlineMedium,
+        )
+        SettingsSectionCard(title = "Privacy-first history") {
+            Text(
+                text = if (historyEnabled) {
+                    "History is on. QuietType saves successful final dictations locally on this device only. Raw audio is never stored."
+                } else {
+                    "History is off by default. Enable it only if you want local copies of successful final dictations for copying later."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            if (!historyEnabled) {
+                Button(onClick = onEnableHistory, modifier = Modifier.fillMaxWidth()) {
+                    Text("Enable local history")
+                }
+            }
+        }
+        if (historyEntries.isEmpty()) {
+            StatusCard(
+                title = "No saved dictations",
+                body = if (historyEnabled) {
+                    "New successful final dictations will appear here."
+                } else {
+                    "Turn on local history to save future dictations."
+                },
+            )
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                OutlinedButton(onClick = onClearHistory) { Text("Clear all") }
+            }
+            historyEntries.forEach { entry ->
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Text(
+                            text = formatHistoryTimestamp(entry.createdAtEpochMillis),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = entry.text,
+                            style = MaterialTheme.typography.bodyLarge,
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Button(
+                                onClick = { onCopyHistoryEntry(entry) },
+                                modifier = Modifier.weight(1f),
+                            ) { Text("Copy") }
+                            OutlinedButton(
+                                onClick = { onDeleteHistoryEntry(entry.id) },
+                                modifier = Modifier.weight(1f),
+                            ) { Text("Delete") }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun formatHistoryTimestamp(epochMillis: Long): String = DateFormat.getDateTimeInstance(
+    DateFormat.MEDIUM,
+    DateFormat.SHORT,
+).format(Date(epochMillis))
+
+@Composable
 private fun QuietTypeAboutScreen(modifier: Modifier = Modifier) {
     val uriHandler = LocalUriHandler.current
     Column(
@@ -1022,6 +1144,7 @@ private fun QuietTypeHomeScreenPreview() {
             modelDownloadProgress = null,
             isModelDownloadActive = false,
             isAccessibilityEnabled = false,
+            historyEntries = emptyList(),
             onSettingsChange = {},
             onOpenAccessibilitySettings = {},
             onRequestMicrophonePermission = {},
@@ -1030,6 +1153,9 @@ private fun QuietTypeHomeScreenPreview() {
             onSelectModel = {},
             onDownloadModel = {},
             onDeleteModel = {},
+            onCopyHistoryEntry = {},
+            onDeleteHistoryEntry = {},
+            onClearHistory = {},
         )
     }
 }

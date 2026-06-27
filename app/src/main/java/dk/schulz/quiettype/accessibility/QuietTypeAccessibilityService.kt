@@ -32,12 +32,14 @@ import dk.schulz.quiettype.dictation.DictationCommand
 import dk.schulz.quiettype.dictation.DictationInteractionController
 import dk.schulz.quiettype.dictation.DictationTranscriptContract
 import dk.schulz.quiettype.dictation.QuietTypeRecordingService
+import dk.schulz.quiettype.history.DictationHistoryStore
 import dk.schulz.quiettype.settings.AppSettingsStore
 import dk.schulz.quiettype.settings.DictationInteraction
 import dk.schulz.quiettype.settings.OverlayColorPreset
 
 class QuietTypeAccessibilityService : AccessibilityService() {
     private lateinit var settingsStore: AppSettingsStore
+    private lateinit var historyStore: DictationHistoryStore
     private lateinit var windowManager: WindowManager
     private var overlayView: View? = null
     private var isDictationRecording = false
@@ -53,13 +55,13 @@ class QuietTypeAccessibilityService : AccessibilityService() {
                     val transcript = DictationTranscriptContract.cleanFinalTranscript(
                         intent.getStringExtra(DictationTranscriptContract.ExtraTranscript),
                     ) ?: return
-                    insertTranscriptIntoFocusedField(transcript)
+                    insertTranscriptIntoFocusedField(transcript, recordHistory = true)
                 }
                 DictationTranscriptContract.ActionLiveTranscript -> {
                     val transcript = DictationTranscriptContract.cleanLiveTranscript(
                         intent.getStringExtra(DictationTranscriptContract.ExtraTranscript),
                     ) ?: return
-                    insertTranscriptIntoFocusedField(transcript)
+                    insertTranscriptIntoFocusedField(transcript, recordHistory = false)
                 }
                 DictationTranscriptContract.ActionProcessingState -> {
                     isDictationProcessing = intent.getBooleanExtra(DictationTranscriptContract.ExtraIsProcessing, false)
@@ -72,6 +74,7 @@ class QuietTypeAccessibilityService : AccessibilityService() {
     override fun onCreate() {
         super.onCreate()
         settingsStore = AppSettingsStore(this)
+        historyStore = DictationHistoryStore(this)
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         ContextCompat.registerReceiver(
             this,
@@ -262,7 +265,7 @@ class QuietTypeAccessibilityService : AccessibilityService() {
         dialog.show()
     }
 
-    private fun insertTranscriptIntoFocusedField(transcript: String) {
+    private fun insertTranscriptIntoFocusedField(transcript: String, recordHistory: Boolean) {
         val focusedNode = rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
         if (focusedNode == null) {
             showToast("No editable text field is focused.")
@@ -302,6 +305,12 @@ class QuietTypeAccessibilityService : AccessibilityService() {
                         putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, cursor)
                     }
                     focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, selectionArguments)
+                }
+                if (recordHistory) {
+                    historyStore.recordTranscript(
+                        transcript = transcript,
+                        historyEnabled = settingsStore.load().transcriptHistoryEnabled,
+                    )
                 }
                 showToast("Inserted QuietType dictation.")
             } else {

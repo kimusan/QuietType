@@ -40,7 +40,7 @@
 - Explicit user consent for model downloads.
 - HTTPS plus checksum verification for model files.
 - No raw-audio persistence by default.
-- No transcript history by default.
+- No transcript history by default; opt-in history stores final text only in private app storage and provides per-entry/all-entry deletion.
 - Accessibility service activates only around editable fields and user-triggered dictation.
 - Sensitive-field blocking.
 - Clipboard fallback disabled by default and clearly labeled if added.

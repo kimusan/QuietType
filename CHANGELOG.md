@@ -18,6 +18,7 @@ The format follows Keep a Changelog principles, and versions should follow seman
 
 ### Added
 
+- Optional local-only dictation history with an off-by-default setting, History screen, copy/delete/clear controls, and final-transcript-only recording after successful insertion.
 - Initial product, architecture, privacy, permissions, UX, and release planning documents.
 - Android/Kotlin project bootstrap with Gradle wrapper, Compose Material 3 app shell, dynamic color theme, debug/release build configuration, and a unit test.
 - Interactive Material 3 setup preview with onboarding, status, and settings sections for the privacy-first dictation flow.

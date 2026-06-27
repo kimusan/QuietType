@@ -68,6 +68,7 @@ Then manually verify:
 5. Password/sensitive fields are blocked by default.
 6. Model download is explicit, HTTPS-only, SHA-256 verified, and stored under app-private storage.
 7. Downloaded archive state is not presented as ASR-ready until runtime preparation succeeds.
+8. Dictation history is off by default; when enabled, successful final dictations appear in History and copy/delete/clear controls work.
 
 ## Signing
 

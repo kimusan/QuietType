@@ -6,7 +6,7 @@
 - Make privacy state visible, not buried in legal copy.
 - Use Material 3 components, dynamic color, dark mode, large touch targets, and adaptive layouts.
 - Ask for permissions just in time and explain each one before the Android system dialog/settings screen.
-- Prefer safe defaults: offline, no telemetry, no transcript history, no clipboard fallback.
+- Prefer safe defaults: offline, no telemetry, no transcript history unless the user opts in, no automatic clipboard fallback.
 
 ## Onboarding flow
 
@@ -62,3 +62,10 @@
 - Use top app bars, cards, switches, list items, snackbars, and dialogs from Material 3.
 - Use adaptive navigation: bottom navigation for compact screens, navigation rail for larger screens.
 - Respect font scaling, contrast, reduced motion, and TalkBack.
+
+
+## History screen
+
+- History is off by default and can be enabled from Settings or the empty History screen.
+- Saved entries are local-only successful final dictations. Live partial text and raw audio are not saved.
+- Users can copy an entry for pasting/reinsertion, delete one entry, or clear all history.

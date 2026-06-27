@@ -1,6 +1,8 @@
 package dk.schulz.quiettype
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -13,11 +15,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import dk.schulz.quiettype.accessibility.QuietTypeAccessibilityService
 import dk.schulz.quiettype.dictation.DictationSessionReducer
 import dk.schulz.quiettype.dictation.DictationSessionState
 import dk.schulz.quiettype.dictation.QuietTypeRecordingService
+import dk.schulz.quiettype.history.DictationHistoryEntry
+import dk.schulz.quiettype.history.DictationHistoryStore
 import dk.schulz.quiettype.models.ModelArtifactInstallResult
 import dk.schulz.quiettype.models.ModelArtifactInstaller
 import dk.schulz.quiettype.models.ModelCatalogReducer
@@ -39,6 +44,7 @@ class MainActivity : ComponentActivity() {
     private var modelDownloadStatus by mutableStateOf<String?>(null)
     private var modelDownloadProgress by mutableStateOf<ModelDownloadProgress?>(null)
     private var activeModelDownloadId by mutableStateOf<String?>(null)
+    private var historyEntries by mutableStateOf<List<DictationHistoryEntry>>(emptyList())
 
     private val microphonePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -51,7 +57,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val settingsStore = AppSettingsStore(this)
+        val historyStore = DictationHistoryStore(this)
         appSettings = settingsStore.load()
+        historyEntries = historyStore.load()
         refreshRuntimeStatus()
 
         fun saveSettings(settings: AppSettings) {
@@ -68,6 +76,7 @@ class MainActivity : ComponentActivity() {
                 modelDownloadProgress = modelDownloadProgress,
                 isModelDownloadActive = activeModelDownloadId != null,
                 isAccessibilityEnabled = isAccessibilityEnabled,
+                historyEntries = historyEntries,
                 onSettingsChange = ::saveSettings,
                 onOpenAccessibilitySettings = {
                     startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
@@ -92,6 +101,17 @@ class MainActivity : ComponentActivity() {
                         onSettingsReady = ::saveSettings,
                     )
                 },
+                onCopyHistoryEntry = { entry ->
+                    copyHistoryEntry(entry)
+                },
+                onDeleteHistoryEntry = { entryId ->
+                    historyStore.delete(entryId)
+                    historyEntries = historyStore.load()
+                },
+                onClearHistory = {
+                    historyStore.clear()
+                    historyEntries = emptyList()
+                },
                 onDeleteModel = { modelId ->
                     modelCatalogState().catalog.modelById(modelId)?.let { model ->
                         ModelArtifactInstaller(
@@ -115,6 +135,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         refreshRuntimeStatus()
+        historyEntries = DictationHistoryStore(this).load()
     }
 
     private fun startRecordingShell() {
@@ -137,6 +158,12 @@ class MainActivity : ComponentActivity() {
     private fun stopRecordingShell() {
         stopService(QuietTypeRecordingService.stopIntent(this))
         dictationState = DictationSessionReducer.stopRecording(dictationState)
+    }
+
+    private fun copyHistoryEntry(entry: DictationHistoryEntry) {
+        val clipboard = getSystemService(ClipboardManager::class.java)
+        clipboard.setPrimaryClip(ClipData.newPlainText("QuietType dictation", entry.text))
+        Toast.makeText(this, "Copied dictation history entry.", Toast.LENGTH_SHORT).show()
     }
 
     private fun hasMicrophonePermission(): Boolean = ContextCompat.checkSelfPermission(
