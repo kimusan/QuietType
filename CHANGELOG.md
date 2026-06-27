@@ -15,11 +15,15 @@ The format follows Keep a Changelog principles, and versions should follow seman
 - Marked live insertion as experimental and added preset floating-button color choices.
 - Added a separate drag handle on the Accessibility floating control so repositioning does not trigger dictation.
 - Added a hide-here control with warning confirmation; hidden apps/screens/fields can be removed again from Settings.
+- The Settings screen now keeps only the correction-runtime toggle/summary, while the Models screen owns correction-model download, selection, and deletion flows.
+- Whisper tiny/base downloadable catalog entries now use verified upstream SHA-256 checksums so downloads do not fail on checksum mismatch.
 
 ### Added
 
 - Active-field quick correction from the floating overlay: cleans selected text, or the whole focused field when nothing is selected. A separate Settings section now lets users choose a future local correction model while built-in cleanup remains the current fallback.
 - Compact model/language profiles on the Models screen for Danish/multilingual, compact multilingual, English low-latency, and Custom workflows; selecting a non-custom profile switches to and starts downloading its recommended local ASR model when needed.
+- Separate correction-model management on the Models screen: choosing a downloadable Fix model now immediately starts its download, downloaded correction models can be deleted, and the first real downloadable candidate is SmolLM2 360M Instruct Q4_K_M.
+- Immediate floating-overlay Fix feedback: pressing Fix now shows an instant toast and changes the overlay label to `✨ Fixing` while correction is running.
 - Optional local-only dictation history with an off-by-default setting, History screen, copy/delete/clear controls, and final-transcript-only recording after successful insertion.
 - Initial product, architecture, privacy, permissions, UX, and release planning documents.
 - Android/Kotlin project bootstrap with Gradle wrapper, Compose Material 3 app shell, dynamic color theme, debug/release build configuration, and a unit test.

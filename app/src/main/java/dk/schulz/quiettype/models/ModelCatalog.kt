@@ -170,7 +170,7 @@ data class ModelCatalog(
                     license = "MIT runtime; OpenAI Whisper model license/terms require release NOTICE review",
                     artifact = ModelArtifact(
                         url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin",
-                        sha256 = "518970a29bedb265f23ac48d486ddbc63bedffd90967b10140ae5ac61243acf3",
+                        sha256 = "be07e048e1e599ad46341c8d2a135645097a538221678b7acdd1b1919c6e1b21",
                         fileName = "ggml-tiny.bin",
                         licenseUrl = "https://huggingface.co/ggerganov/whisper.cpp",
                     ),
@@ -190,7 +190,7 @@ data class ModelCatalog(
                     license = "MIT runtime; OpenAI Whisper model license/terms require release NOTICE review",
                     artifact = ModelArtifact(
                         url = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin",
-                        sha256 = "2f62d18b50c3f3feafbf990eec23a93d319660b1efbdd3fff55e52b7cde2e374",
+                        sha256 = "60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe",
                         fileName = "ggml-base.bin",
                         licenseUrl = "https://huggingface.co/ggerganov/whisper.cpp",
                     ),

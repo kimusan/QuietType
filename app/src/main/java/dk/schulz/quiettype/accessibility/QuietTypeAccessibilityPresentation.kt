@@ -4,6 +4,7 @@ enum class OverlayDictationState {
     Idle,
     Listening,
     Processing,
+    Fixing,
 }
 
 object QuietTypeAccessibilityPresentation {
@@ -20,6 +21,7 @@ object QuietTypeAccessibilityPresentation {
         OverlayDictationState.Idle -> "🎙"
         OverlayDictationState.Listening -> "● Listening"
         OverlayDictationState.Processing -> "⏳ Thinking"
+        OverlayDictationState.Fixing -> "✨ Fixing"
     }
 
     fun stateAfterStopRequested(wasRecording: Boolean): OverlayDictationState = if (wasRecording) {

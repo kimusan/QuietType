@@ -86,6 +86,8 @@ fun QuietTypeApp(
     onSelectLanguageProfile: (String) -> Unit = {},
     onDownloadModel: (String) -> Unit = {},
     onDeleteModel: (String) -> Unit = {},
+    onSelectCorrectionModel: (String) -> Unit = {},
+    onDeleteCorrectionModel: (String) -> Unit = {},
     onCopyHistoryEntry: (DictationHistoryEntry) -> Unit = {},
     onDeleteHistoryEntry: (String) -> Unit = {},
     onClearHistory: () -> Unit = {},
@@ -109,6 +111,8 @@ fun QuietTypeApp(
             onSelectLanguageProfile = onSelectLanguageProfile,
             onDownloadModel = onDownloadModel,
             onDeleteModel = onDeleteModel,
+            onSelectCorrectionModel = onSelectCorrectionModel,
+            onDeleteCorrectionModel = onDeleteCorrectionModel,
             onCopyHistoryEntry = onCopyHistoryEntry,
             onDeleteHistoryEntry = onDeleteHistoryEntry,
             onClearHistory = onClearHistory,
@@ -136,6 +140,8 @@ fun QuietTypeHomeScreen(
     onSelectLanguageProfile: (String) -> Unit,
     onDownloadModel: (String) -> Unit,
     onDeleteModel: (String) -> Unit,
+    onSelectCorrectionModel: (String) -> Unit,
+    onDeleteCorrectionModel: (String) -> Unit,
     onCopyHistoryEntry: (DictationHistoryEntry) -> Unit,
     onDeleteHistoryEntry: (String) -> Unit,
     onClearHistory: () -> Unit,
@@ -172,6 +178,7 @@ fun QuietTypeHomeScreen(
         ) {
             if (selectedSection == 2) {
                 QuietTypeModelsScreen(
+                    appSettings = appSettings,
                     modelCatalogState = modelCatalogState,
                     modelDownloadStatus = modelDownloadStatus,
                     modelDownloadProgress = modelDownloadProgress,
@@ -180,6 +187,8 @@ fun QuietTypeHomeScreen(
                     onSelectLanguageProfile = onSelectLanguageProfile,
                     onDownloadModel = onDownloadModel,
                     onDeleteModel = onDeleteModel,
+                    onSelectCorrectionModel = onSelectCorrectionModel,
+                    onDeleteCorrectionModel = onDeleteCorrectionModel,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 24.dp, vertical = 12.dp),
@@ -549,25 +558,22 @@ private fun QuietTypeSettingsPreview(
         SettingsSectionCard(title = "Fix text model") {
             SettingSwitchRow(
                 title = "Use local correction model",
-                body = "When enabled, Fix will use the selected on-device cleanup model once its runtime is available. Built-in cleanup remains the fallback.",
+                body = "When enabled, Fix will use the selected correction model after its runtime is integrated. For now QuietType still falls back to built-in cleanup.",
                 checked = appSettings.correctionModelEnabled,
                 onCheckedChange = { enabled ->
                     onSettingsChange(appSettings.copy(correctionModelEnabled = enabled))
                 },
             )
-            CorrectionModelCatalog.default().models.forEach { model ->
-                FilterChip(
-                    selected = appSettings.selectedCorrectionModelId == model.id,
-                    onClick = { onSettingsChange(appSettings.copy(selectedCorrectionModelId = model.id)) },
-                    label = { Text("${model.name} · ~${model.sizeMegabytes} MB") },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Text(
-                    text = model.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            val selectedCorrectionModel = CorrectionModelCatalog.default().modelById(appSettings.selectedCorrectionModelId)
+            Text(
+                text = selectedCorrectionModel?.let { "Selected: ${it.name}" } ?: "Selected: Fast local cleanup",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Text(
+                text = "Download, switch, or delete correction models from the Models screen.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
         SettingSwitchCard(
             title = "Save local dictation history",
@@ -672,6 +678,7 @@ private fun QuietTypeSettingsPreview(
 
 @Composable
 private fun QuietTypeModelsScreen(
+    appSettings: AppSettings,
     modelCatalogState: ModelCatalogState,
     modelDownloadStatus: String?,
     modelDownloadProgress: ModelDownloadProgress?,
@@ -680,6 +687,8 @@ private fun QuietTypeModelsScreen(
     onSelectLanguageProfile: (String) -> Unit,
     onDownloadModel: (String) -> Unit,
     onDeleteModel: (String) -> Unit,
+    onSelectCorrectionModel: (String) -> Unit,
+    onDeleteCorrectionModel: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var modelPendingDelete by remember { mutableStateOf<VoiceModel?>(null) }
@@ -703,7 +712,7 @@ private fun QuietTypeModelsScreen(
     }
 
     Column(
-        modifier = modifier,
+        modifier = modifier.verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(
@@ -711,7 +720,7 @@ private fun QuietTypeModelsScreen(
             style = MaterialTheme.typography.headlineMedium,
         )
         Text(
-            text = "Pick a profile to select and download its recommended speech model. Choose Custom to manage every model manually.",
+            text = "Pick a speech profile, or choose Custom for the full list.",
             style = MaterialTheme.typography.bodyLarge,
         )
         SettingsSectionCard(title = "Language profile") {
@@ -766,10 +775,7 @@ private fun QuietTypeModelsScreen(
                 fontWeight = FontWeight.SemiBold,
             )
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState()),
+                modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 modelCatalogState.catalog.models.forEach { model ->
@@ -849,8 +855,97 @@ private fun QuietTypeModelsScreen(
                     }
                 }
             }
-        } else {
-            Spacer(modifier = Modifier.weight(1f))
+        }
+
+        Text(
+            text = "Correction models",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Text(
+            text = "Selecting a correction model saves it immediately and downloads it if needed. Fix still falls back to built-in cleanup until local LLM runtime wiring lands.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            CorrectionModelCatalog.default().models.forEach { model ->
+                val selected = appSettings.selectedCorrectionModelId == model.id
+                val downloaded = appSettings.downloadedCorrectionModelIds.contains(model.id)
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (selected) {
+                            MaterialTheme.colorScheme.secondaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        },
+                    ),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = model.name,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = model.description,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                        Text(
+                            text = "${model.engine} · ~${model.sizeMegabytes} MB",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            if (selected) StatusChip("Selected")
+                            StatusChip(
+                                when {
+                                    model.isDeterministic -> "built in"
+                                    downloaded -> "downloaded"
+                                    model.isDownloadable -> "not downloaded"
+                                    else -> "not available"
+                                },
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Button(
+                                onClick = { onSelectCorrectionModel(model.id) },
+                                enabled = !isModelDownloadActive && (!selected || !downloaded || model.isDeterministic),
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Text(
+                                    when {
+                                        model.isDeterministic && selected -> "Selected"
+                                        model.isDeterministic -> "Use"
+                                        selected && downloaded -> "Selected"
+                                        model.isDownloadable -> "Use + download"
+                                        else -> "Unavailable"
+                                    },
+                                )
+                            }
+                            if (!model.isDeterministic && downloaded) {
+                                OutlinedButton(
+                                    onClick = { onDeleteCorrectionModel(model.id) },
+                                    enabled = !isModelDownloadActive,
+                                    modifier = Modifier.weight(1f),
+                                ) { Text("Delete") }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -1311,6 +1406,8 @@ private fun QuietTypeHomeScreenPreview() {
             onSelectLanguageProfile = {},
             onDownloadModel = {},
             onDeleteModel = {},
+            onSelectCorrectionModel = {},
+            onDeleteCorrectionModel = {},
             onCopyHistoryEntry = {},
             onDeleteHistoryEntry = {},
             onClearHistory = {},

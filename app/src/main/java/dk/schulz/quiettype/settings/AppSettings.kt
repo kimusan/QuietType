@@ -27,6 +27,7 @@ data class AppSettings(
     val liveSentenceInsertionEnabled: Boolean,
     val correctionModelEnabled: Boolean,
     val selectedCorrectionModelId: String,
+    val downloadedCorrectionModelIds: Set<String>,
     val hideInSensitiveFields: Boolean,
     val selectedModelId: String,
     val selectedLanguageProfileId: String,
@@ -51,6 +52,7 @@ data class AppSettings(
             liveSentenceInsertionEnabled = false,
             correctionModelEnabled = false,
             selectedCorrectionModelId = CorrectionModelCatalog.default().defaultModel.id,
+            downloadedCorrectionModelIds = emptySet(),
             hideInSensitiveFields = true,
             selectedModelId = ModelCatalog.default().defaultProfile.defaultModelId ?: ModelCatalog.default().recommended.id,
             selectedLanguageProfileId = ModelCatalog.default().defaultProfile.id,
@@ -72,6 +74,7 @@ object AppSettingsCodec {
     private const val LiveSentenceInsertionEnabled = "liveSentenceInsertionEnabled"
     private const val CorrectionModelEnabled = "correctionModelEnabled"
     private const val SelectedCorrectionModelId = "selectedCorrectionModelId"
+    private const val DownloadedCorrectionModelIds = "downloadedCorrectionModelIds"
     private const val HideInSensitiveFields = "hideInSensitiveFields"
     private const val SelectedModelId = "selectedModelId"
     private const val SelectedLanguageProfileId = "selectedLanguageProfileId"
@@ -90,6 +93,7 @@ object AppSettingsCodec {
         LiveSentenceInsertionEnabled to settings.liveSentenceInsertionEnabled.toString(),
         CorrectionModelEnabled to settings.correctionModelEnabled.toString(),
         SelectedCorrectionModelId to settings.selectedCorrectionModelId,
+        DownloadedCorrectionModelIds to settings.downloadedCorrectionModelIds.sorted().joinToString(","),
         HideInSensitiveFields to settings.hideInSensitiveFields.toString(),
         SelectedModelId to settings.selectedModelId,
         SelectedLanguageProfileId to settings.selectedLanguageProfileId,
@@ -119,6 +123,11 @@ object AppSettingsCodec {
             selectedCorrectionModelId = values[SelectedCorrectionModelId]
                 ?.takeIf { CorrectionModelCatalog.default().modelById(it) != null }
                 ?: defaults.selectedCorrectionModelId,
+            downloadedCorrectionModelIds = values[DownloadedCorrectionModelIds]?.split(',')
+                ?.map { it.trim() }
+                ?.filter { it.isNotBlank() }
+                ?.toSet()
+                ?: defaults.downloadedCorrectionModelIds,
             hideInSensitiveFields = values[HideInSensitiveFields]?.toBooleanStrictOrNull()
                 ?: defaults.hideInSensitiveFields,
             selectedModelId = values[SelectedModelId]?.takeIf { it.isNotBlank() }

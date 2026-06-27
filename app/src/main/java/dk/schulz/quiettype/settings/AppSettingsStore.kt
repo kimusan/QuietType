@@ -20,6 +20,7 @@ class AppSettingsStore(
             LiveSentenceInsertionEnabled to preferences.getString(LiveSentenceInsertionEnabled, null).orEmpty(),
             CorrectionModelEnabled to preferences.getString(CorrectionModelEnabled, null).orEmpty(),
             SelectedCorrectionModelId to preferences.getString(SelectedCorrectionModelId, null).orEmpty(),
+            DownloadedCorrectionModelIds to preferences.getString(DownloadedCorrectionModelIds, null).orEmpty(),
             HideInSensitiveFields to preferences.getString(HideInSensitiveFields, null).orEmpty(),
             SelectedModelId to preferences.getString(SelectedModelId, null).orEmpty(),
             SelectedLanguageProfileId to preferences.getString(SelectedLanguageProfileId, null).orEmpty(),
@@ -49,6 +50,7 @@ class AppSettingsStore(
         private const val LiveSentenceInsertionEnabled = "liveSentenceInsertionEnabled"
         private const val CorrectionModelEnabled = "correctionModelEnabled"
         private const val SelectedCorrectionModelId = "selectedCorrectionModelId"
+        private const val DownloadedCorrectionModelIds = "downloadedCorrectionModelIds"
         private const val HideInSensitiveFields = "hideInSensitiveFields"
         private const val SelectedModelId = "selectedModelId"
         private const val SelectedLanguageProfileId = "selectedLanguageProfileId"

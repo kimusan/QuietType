@@ -34,6 +34,10 @@ class QuietTypeAccessibilityPresentationTest {
             "⏳ Thinking",
             QuietTypeAccessibilityPresentation.overlayLabel(state = OverlayDictationState.Processing),
         )
+        assertEquals(
+            "✨ Fixing",
+            QuietTypeAccessibilityPresentation.overlayLabel(state = OverlayDictationState.Fixing),
+        )
     }
 
     @Test

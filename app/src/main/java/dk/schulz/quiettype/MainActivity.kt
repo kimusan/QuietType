@@ -18,6 +18,8 @@ import androidx.compose.runtime.setValue
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import dk.schulz.quiettype.accessibility.QuietTypeAccessibilityService
+import dk.schulz.quiettype.correction.CorrectionModel
+import dk.schulz.quiettype.correction.CorrectionModelCatalog
 import dk.schulz.quiettype.dictation.DictationSessionReducer
 import dk.schulz.quiettype.dictation.DictationSessionState
 import dk.schulz.quiettype.dictation.QuietTypeRecordingService
@@ -123,6 +125,32 @@ class MainActivity : ComponentActivity() {
                         onSettingsReady = ::saveSettings,
                     )
                 },
+                onSelectCorrectionModel = { modelId ->
+                    val model = CorrectionModelCatalog.default().modelById(modelId) ?: return@QuietTypeApp
+                    val updated = appSettings.copy(
+                        selectedCorrectionModelId = modelId,
+                        correctionModelEnabled = true,
+                    )
+                    saveSettings(updated)
+                    if (!model.isDeterministic && !updated.downloadedCorrectionModelIds.contains(modelId)) {
+                        startCorrectionModelDownload(
+                            model = model,
+                            onSettingsReady = ::saveSettings,
+                        )
+                    }
+                },
+                onDeleteCorrectionModel = { modelId ->
+                    val model = CorrectionModelCatalog.default().modelById(modelId) ?: return@QuietTypeApp
+                    deleteCorrectionModel(model)
+                    saveSettings(
+                        appSettings.copy(
+                            downloadedCorrectionModelIds = appSettings.downloadedCorrectionModelIds - modelId,
+                            correctionModelEnabled = if (appSettings.selectedCorrectionModelId == modelId) false else appSettings.correctionModelEnabled,
+                        ),
+                    )
+                    modelDownloadStatus = "Deleted local correction model for ${model.name}."
+                    modelDownloadProgress = null
+                },
                 onCopyHistoryEntry = { entry ->
                     copyHistoryEntry(entry)
                 },
@@ -217,6 +245,76 @@ class MainActivity : ComponentActivity() {
         preparedModelIds = appSettings.preparedModelIds,
     )
 
+    private fun startCorrectionModelDownload(
+        model: CorrectionModel,
+        onSettingsReady: (AppSettings) -> Unit,
+    ) {
+        if (activeModelDownloadId != null) {
+            modelDownloadStatus = "A model download is already running. Wait for it to finish before starting another."
+            modelDownloadProgress = null
+            return
+        }
+        val downloadable = model.asDownloadableVoiceModel() ?: return
+        activeModelDownloadId = model.id
+        modelDownloadStatus = "Starting download for ${model.name}…"
+        modelDownloadProgress = ModelDownloadProgress(
+            modelId = model.id,
+            bytesRead = 0L,
+            totalBytes = model.sizeMegabytes.toLong() * 1024L * 1024L,
+        )
+        Thread {
+            val result = runCatching {
+                ModelArtifactInstaller(
+                    modelRootDirectory = filesDir.resolve("correction-models"),
+                ).install(downloadable) { progress ->
+                    runOnUiThread {
+                        modelDownloadProgress = progress
+                        modelDownloadStatus = progress.label(model.name)
+                    }
+                }
+            }.getOrElse { error ->
+                runOnUiThread {
+                    activeModelDownloadId = null
+                    modelDownloadProgress = null
+                    modelDownloadStatus = "Download failed for ${model.name}: ${error.message ?: error::class.java.simpleName}."
+                }
+                return@Thread
+            }
+
+            runOnUiThread {
+                activeModelDownloadId = null
+                modelDownloadProgress = null
+                when (result) {
+                    is ModelArtifactInstallResult.Installed -> {
+                        onSettingsReady(
+                            appSettings.copy(
+                                selectedCorrectionModelId = model.id,
+                                downloadedCorrectionModelIds = appSettings.downloadedCorrectionModelIds + model.id,
+                                correctionModelEnabled = true,
+                            ),
+                        )
+                        modelDownloadStatus = "Verified and stored ${model.name}. QuietType will keep using built-in cleanup until correction runtime integration is added."
+                    }
+
+                    is ModelArtifactInstallResult.ChecksumMismatch -> {
+                        modelDownloadStatus = "Checksum mismatch for ${model.name}; deleted the downloaded file and did not keep it."
+                    }
+
+                    is ModelArtifactInstallResult.InstallFailed -> {
+                        modelDownloadStatus = "Could not store ${model.name}: ${result.reason}."
+                    }
+                }
+            }
+        }.start()
+    }
+
+    private fun deleteCorrectionModel(model: CorrectionModel) {
+        val downloadable = model.asDownloadableVoiceModel() ?: return
+        ModelArtifactInstaller(
+            modelRootDirectory = filesDir.resolve("correction-models"),
+        ).delete(downloadable)
+    }
+
     private fun startModelDownload(
         modelId: String,
         onSettingsReady: (AppSettings) -> Unit,
@@ -299,5 +397,24 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }.start()
+    }
+
+    private fun CorrectionModel.asDownloadableVoiceModel(): dk.schulz.quiettype.models.VoiceModel? {
+        val modelArtifact = artifact ?: return null
+        return dk.schulz.quiettype.models.VoiceModel(
+            id = id,
+            name = name,
+            description = description,
+            engine = engine,
+            language = "Text correction",
+            sizeMegabytes = sizeMegabytes,
+            license = license,
+            artifact = modelArtifact,
+            isOfflineCapable = true,
+            runtime = dk.schulz.quiettype.models.ModelRuntime(
+                kind = dk.schulz.quiettype.models.ModelRuntimeKind.WhisperCpp,
+                requiredFiles = emptyList(),
+            ),
+        )
     }
 }

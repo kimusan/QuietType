@@ -44,6 +44,7 @@ class QuietTypeAccessibilityService : AccessibilityService() {
     private var overlayView: View? = null
     private var isDictationRecording = false
     private var isDictationProcessing = false
+    private var isCorrectionRunning = false
     private var lastDetection: FocusedFieldDetection? = null
     private var lastFocusedSnapshot: FocusedFieldSnapshot? = null
     private val dictationReceiver = object : BroadcastReceiver() {
@@ -277,6 +278,10 @@ class QuietTypeAccessibilityService : AccessibilityService() {
             return
         }
 
+        isCorrectionRunning = true
+        keepActiveOverlayVisible()
+        showToast("Fixing focused text…")
+
         try {
             val snapshot = focusedNode.toFocusedFieldSnapshot(
                 eventPackageName = focusedNode.packageName?.toString(),
@@ -312,7 +317,7 @@ class QuietTypeAccessibilityService : AccessibilityService() {
                 }
                 val settings = settingsStore.load()
                 if (settings.correctionModelEnabled) {
-                    showToast("Correction model runtime is not wired yet; used built-in cleanup.")
+                    showToast("Correction model download is ready, but runtime is not wired yet; used built-in cleanup.")
                 } else {
                     showToast("Corrected focused text.")
                 }
@@ -320,6 +325,8 @@ class QuietTypeAccessibilityService : AccessibilityService() {
                 showToast("This field does not accept accessibility text correction.")
             }
         } finally {
+            isCorrectionRunning = false
+            keepActiveOverlayVisible()
             focusedNode.recycle()
         }
     }
@@ -440,6 +447,7 @@ class QuietTypeAccessibilityService : AccessibilityService() {
     private fun currentOverlayState(): OverlayDictationState = when {
         isDictationRecording -> OverlayDictationState.Listening
         isDictationProcessing -> OverlayDictationState.Processing
+        isCorrectionRunning -> OverlayDictationState.Fixing
         else -> OverlayDictationState.Idle
     }
 
@@ -533,7 +541,8 @@ class QuietTypeAccessibilityService : AccessibilityService() {
         private fun overlayColorFor(state: OverlayDictationState, preset: OverlayColorPreset): Int = when (state) {
             OverlayDictationState.Listening -> preset.listeningColor
             OverlayDictationState.Idle,
-            OverlayDictationState.Processing -> preset.idleColor
+            OverlayDictationState.Processing,
+            OverlayDictationState.Fixing -> preset.idleColor
         }
     }
 
