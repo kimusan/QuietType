@@ -84,6 +84,7 @@ dependencies {
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.commons.compress)
+    implementation(libs.llama)
     implementation(files("libs/sherpa-onnx-1.13.3.aar"))
 
     debugImplementation(libs.androidx.compose.ui.tooling)

@@ -7,8 +7,8 @@ import org.junit.Test
 
 class TextCorrectionDraftTest {
     @Test
-    fun correctionCleansSelectedTextInActiveEditableField() {
-        val draft = TextCorrectionDraft.from(
+    fun correctionPreparationExtractsSelectedTextInActiveEditableField() {
+        val preparation = TextCorrectionDraft.prepare(
             TextCorrectionRequest(
                 focusedField = editableField(),
                 existingText = "Please send HELLO   WORLD today",
@@ -17,14 +17,15 @@ class TextCorrectionDraftTest {
             ),
         )
 
-        assertTrue(draft.canCorrect)
-        assertEquals("Please send Hello world. today", draft.textToSet)
-        assertEquals(24, draft.cursorPosition)
+        val prepared = (preparation as TextCorrectionPreparationResult.Ready).prepared
+        assertEquals("HELLO   WORLD", prepared.textToCorrect)
+        assertEquals(12, prepared.replacementStart)
+        assertEquals(25, prepared.replacementEnd)
     }
 
     @Test
-    fun correctionCleansWholeActiveEditableFieldWhenNoSelectionExists() {
-        val draft = TextCorrectionDraft.from(
+    fun fromPreparedRebuildsWholeFieldWhenNoSelectionExists() {
+        val preparation = TextCorrectionDraft.prepare(
             TextCorrectionRequest(
                 focusedField = editableField(),
                 existingText = "  HELLO   WORLD  ",
@@ -33,6 +34,8 @@ class TextCorrectionDraftTest {
             ),
         )
 
+        val prepared = (preparation as TextCorrectionPreparationResult.Ready).prepared
+        val draft = TextCorrectionDraft.fromPrepared(prepared, "Hello world.")
         assertTrue(draft.canCorrect)
         assertEquals("Hello world.", draft.textToSet)
         assertEquals(12, draft.cursorPosition)
@@ -40,7 +43,7 @@ class TextCorrectionDraftTest {
 
     @Test
     fun correctionDoesNotTouchSensitiveFields() {
-        val draft = TextCorrectionDraft.from(
+        val preparation = TextCorrectionDraft.prepare(
             TextCorrectionRequest(
                 focusedField = editableField(isPassword = true),
                 existingText = "HELLO WORLD",
@@ -49,8 +52,9 @@ class TextCorrectionDraftTest {
             ),
         )
 
-        assertFalse(draft.canCorrect)
-        assertEquals(TextCorrectionBlockReason.SensitiveField, draft.blockReason)
+        val blocked = (preparation as TextCorrectionPreparationResult.Blocked).draft
+        assertFalse(blocked.canCorrect)
+        assertEquals(TextCorrectionBlockReason.SensitiveField, blocked.blockReason)
     }
 
     private fun editableField(isPassword: Boolean = false) = FocusedFieldSnapshot(

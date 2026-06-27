@@ -20,9 +20,9 @@ The format follows Keep a Changelog principles, and versions should follow seman
 
 ### Added
 
-- Active-field quick correction from the floating overlay: cleans selected text, or the whole focused field when nothing is selected. A separate Settings section now lets users choose a future local correction model while built-in cleanup remains the current fallback.
+- Active-field quick correction from the floating overlay: cleans selected text, or the whole focused field when nothing is selected. QuietType now routes Fix through a pluggable correction pipeline with experimental local SmolLM2 GGUF inference when enabled, and automatic deterministic cleanup fallback when model output is empty/bad or the model is unavailable.
 - Compact model/language profiles on the Models screen for Danish/multilingual, compact multilingual, English low-latency, and Custom workflows; selecting a non-custom profile switches to and starts downloading its recommended local ASR model when needed.
-- Separate correction-model management on the Models screen: choosing a downloadable Fix model now immediately starts its download, downloaded correction models can be deleted, and the first real downloadable candidate is SmolLM2 360M Instruct Q4_K_M.
+- Separate correction-model management on the Models screen: choosing a downloadable Fix model now immediately starts its download, downloaded correction models can be deleted, and the first real local correction candidate is SmolLM2 360M Instruct Q4_K_M.
 - Immediate floating-overlay Fix feedback: pressing Fix now shows an instant toast and changes the overlay label to `✨ Fixing` while correction is running.
 - Optional local-only dictation history with an off-by-default setting, History screen, copy/delete/clear controls, and final-transcript-only recording after successful insertion.
 - Initial product, architecture, privacy, permissions, UX, and release planning documents.

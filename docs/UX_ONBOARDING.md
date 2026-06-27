@@ -82,6 +82,6 @@
 
 - The floating overlay exposes a compact Fix action beside the microphone.
 - Correction targets the active input field, not saved history: selected text is cleaned when a selection exists; otherwise QuietType cleans the whole focused field.
-- The first implementation uses local deterministic cleanup for spacing, casing, and terminal punctuation. Settings exposes separate local correction model choices such as SmolLM2 360M/1.7B candidates; those remain honest runtime-planning options until an on-device LLM runtime is wired in.
+- The first implementation keeps deterministic cleanup as a safety net, but QuietType can now attempt local SmolLM2 GGUF correction when the user enables a downloaded correction model. If model output is empty or low-quality, Fix falls back to built-in cleanup instead of writing garbage into the field.
 - Sensitive/password-like fields remain blocked from both dictation insertion and correction.
-- Fix should remain one tap from the overlay. If model correction is enabled before the runtime is ready, the UI must say it fell back to built-in cleanup.
+- Fix should remain one tap from the overlay. If model correction fails, the UI should say it fell back to built-in cleanup.

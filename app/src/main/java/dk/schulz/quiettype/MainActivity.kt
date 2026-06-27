@@ -293,7 +293,7 @@ class MainActivity : ComponentActivity() {
                                 correctionModelEnabled = true,
                             ),
                         )
-                        modelDownloadStatus = "Verified and stored ${model.name}. QuietType will keep using built-in cleanup until correction runtime integration is added."
+                        modelDownloadStatus = "Verified and stored ${model.name}. QuietType will use it for Fix when correction is enabled, and fall back to built-in cleanup if the model runtime fails."
                     }
 
                     is ModelArtifactInstallResult.ChecksumMismatch -> {

@@ -18,6 +18,18 @@ enum class TextCorrectionBlockReason {
     NoChange,
 }
 
+data class PreparedTextCorrection(
+    val baseText: String,
+    val textToCorrect: String,
+    val replacementStart: Int,
+    val replacementEnd: Int,
+)
+
+sealed class TextCorrectionPreparationResult {
+    data class Ready(val prepared: PreparedTextCorrection) : TextCorrectionPreparationResult()
+    data class Blocked(val draft: TextCorrectionDraft) : TextCorrectionPreparationResult()
+}
+
 data class TextCorrectionDraft(
     val canCorrect: Boolean,
     val textToSet: String,
@@ -25,18 +37,28 @@ data class TextCorrectionDraft(
     val cursorPosition: Int? = null,
 ) {
     companion object {
-        fun from(request: TextCorrectionRequest): TextCorrectionDraft {
+        fun from(request: TextCorrectionRequest): TextCorrectionDraft = when (val preparation = prepare(request)) {
+            is TextCorrectionPreparationResult.Blocked -> preparation.draft
+            is TextCorrectionPreparationResult.Ready -> fromPrepared(
+                prepared = preparation.prepared,
+                corrected = QuickCorrectionPolicy.autoCorrect(preparation.prepared.textToCorrect),
+            )
+        }
+
+        fun prepare(request: TextCorrectionRequest): TextCorrectionPreparationResult {
             if (!request.focusedField.isFocused || !request.focusedField.isEditable) {
-                return blocked(TextCorrectionBlockReason.NotEditable)
+                return TextCorrectionPreparationResult.Blocked(blocked(TextCorrectionBlockReason.NotEditable))
             }
             if (FocusedFieldSensitivity.isSensitive(request.focusedField)) {
-                return blocked(TextCorrectionBlockReason.SensitiveField)
+                return TextCorrectionPreparationResult.Blocked(blocked(TextCorrectionBlockReason.SensitiveField))
             }
 
             val hint = request.hintText?.trim()
             val fieldLooksEmpty = hint != null && request.existingText.trim() == hint
             val baseText = if (fieldLooksEmpty) "" else request.existingText
-            if (baseText.isBlank()) return blocked(TextCorrectionBlockReason.EmptyText)
+            if (baseText.isBlank()) {
+                return TextCorrectionPreparationResult.Blocked(blocked(TextCorrectionBlockReason.EmptyText))
+            }
 
             val range = normalizedRange(
                 selectionStart = request.selectionStart,
@@ -50,16 +72,26 @@ data class TextCorrectionDraft(
                 baseText to (0 to baseText.length)
             }
 
-            val corrected = QuickCorrectionPolicy.autoCorrect(textToCorrect)
-            if (corrected == textToCorrect) return blocked(TextCorrectionBlockReason.NoChange)
+            return TextCorrectionPreparationResult.Ready(
+                PreparedTextCorrection(
+                    baseText = baseText,
+                    textToCorrect = textToCorrect,
+                    replacementStart = replacementRange.first,
+                    replacementEnd = replacementRange.second,
+                ),
+            )
+        }
 
-            val (start, end) = replacementRange
-            val replacementText = baseText.substring(0, start) + corrected + baseText.substring(end)
+        fun fromPrepared(prepared: PreparedTextCorrection, corrected: String): TextCorrectionDraft {
+            if (corrected == prepared.textToCorrect) return blocked(TextCorrectionBlockReason.NoChange)
+            val replacementText = prepared.baseText.substring(0, prepared.replacementStart) +
+                corrected +
+                prepared.baseText.substring(prepared.replacementEnd)
             return TextCorrectionDraft(
                 canCorrect = true,
                 textToSet = replacementText,
                 blockReason = TextCorrectionBlockReason.None,
-                cursorPosition = start + corrected.length,
+                cursorPosition = prepared.replacementStart + corrected.length,
             )
         }
 
@@ -78,4 +110,3 @@ data class TextCorrectionDraft(
         }
     }
 }
-

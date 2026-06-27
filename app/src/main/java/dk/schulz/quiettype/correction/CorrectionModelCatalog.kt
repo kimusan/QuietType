@@ -2,6 +2,11 @@ package dk.schulz.quiettype.correction
 
 import dk.schulz.quiettype.models.ModelArtifact
 
+enum class CorrectionRuntimeKind {
+    Deterministic,
+    Llama,
+}
+
 data class CorrectionModel(
     val id: String,
     val name: String,
@@ -11,6 +16,7 @@ data class CorrectionModel(
     val license: String,
     val artifact: ModelArtifact? = null,
     val isDeterministic: Boolean = false,
+    val runtimeKind: CorrectionRuntimeKind = if (isDeterministic) CorrectionRuntimeKind.Deterministic else CorrectionRuntimeKind.Llama,
 ) {
     val isDownloadable: Boolean = artifact != null
 }
@@ -33,14 +39,16 @@ data class CorrectionModelCatalog(
                     sizeMegabytes = 0,
                     license = "Built into QuietType",
                     isDeterministic = true,
+                    runtimeKind = CorrectionRuntimeKind.Deterministic,
                 ),
                 CorrectionModel(
                     id = "smollm2-360m-instruct-q4-k-m",
                     name = "SmolLM2 360M Instruct Q4_K_M",
-                    description = "Local correction candidate for mobile devices. Downloadable now; runtime wiring still falls back to built-in cleanup until local LLM inference is integrated.",
-                    engine = "GGUF / local LLM candidate",
+                    description = "Runs locally from a downloaded GGUF file for short focused-field cleanup and correction.",
+                    engine = "GGUF / local llama.cpp-compatible runtime",
                     sizeMegabytes = 259,
                     license = "Apache-2.0 model family; GGUF artifact from Hugging Face",
+                    runtimeKind = CorrectionRuntimeKind.Llama,
                     artifact = ModelArtifact(
                         url = "https://huggingface.co/bartowski/SmolLM2-360M-Instruct-GGUF/resolve/main/SmolLM2-360M-Instruct-Q4_K_M.gguf",
                         sha256 = "2fa3f013dcdd7b99f9b237717fa0b12d75bbb89984cc1274be1471a465bac9c2",

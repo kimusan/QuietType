@@ -15,6 +15,8 @@ import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -28,6 +30,8 @@ import androidx.annotation.ColorInt
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import dk.schulz.quiettype.R
+import dk.schulz.quiettype.correction.CorrectionExecutionResult
+import dk.schulz.quiettype.correction.CorrectionPipeline
 import dk.schulz.quiettype.dictation.DictationCommand
 import dk.schulz.quiettype.dictation.DictationInteractionController
 import dk.schulz.quiettype.dictation.DictationTranscriptContract
@@ -41,6 +45,12 @@ class QuietTypeAccessibilityService : AccessibilityService() {
     private lateinit var settingsStore: AppSettingsStore
     private lateinit var historyStore: DictationHistoryStore
     private lateinit var windowManager: WindowManager
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val correctionPipeline by lazy {
+        CorrectionPipeline(
+            modelRootDirectory = filesDir.resolve("correction-models"),
+        )
+    }
     private var overlayView: View? = null
     private var isDictationRecording = false
     private var isDictationProcessing = false
@@ -142,6 +152,7 @@ class QuietTypeAccessibilityService : AccessibilityService() {
     override fun onDestroy() {
         hideOverlay()
         stopDictationRecording()
+        runCatching { correctionPipeline.close() }
         runCatching { unregisterReceiver(dictationReceiver) }
         cancelServiceReadyNotification()
         super.onDestroy()
@@ -231,7 +242,8 @@ class QuietTypeAccessibilityService : AccessibilityService() {
     private fun updateOverlayPresentation(view: LinearLayout, detection: FocusedFieldDetection) {
         val state = currentOverlayState()
         val label = overlayLabel(detection, state)
-        val colorPreset = settingsStore.load().overlayColorPreset
+        val settings = settingsStore.load()
+        val colorPreset = settings.overlayColorPreset
         val color = overlayColorFor(state, colorPreset)
         view.background = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
@@ -242,6 +254,10 @@ class QuietTypeAccessibilityService : AccessibilityService() {
         (view.getChildAt(1) as? TextView)?.apply {
             text = label
             contentDescription = label
+        }
+        (view.getChildAt(2) as? TextView)?.apply {
+            visibility = if (settings.correctionModelEnabled) View.VISIBLE else View.GONE
+            isEnabled = settings.correctionModelEnabled
         }
     }
 
@@ -278,57 +294,108 @@ class QuietTypeAccessibilityService : AccessibilityService() {
             return
         }
 
+        val snapshot = focusedNode.toFocusedFieldSnapshot(
+            eventPackageName = focusedNode.packageName?.toString(),
+            eventClassName = focusedNode.className?.toString(),
+        )
+        val request = TextCorrectionRequest(
+            focusedField = snapshot,
+            existingText = focusedNode.text?.toString().orEmpty(),
+            hintText = focusedNode.hintText?.toString(),
+            selectionStart = focusedNode.textSelectionStart,
+            selectionEnd = focusedNode.textSelectionEnd,
+        )
+        focusedNode.recycle()
+        val settings = settingsStore.load()
+
         isCorrectionRunning = true
         keepActiveOverlayVisible()
         showToast("Fixing focused text…")
 
-        try {
-            val snapshot = focusedNode.toFocusedFieldSnapshot(
-                eventPackageName = focusedNode.packageName?.toString(),
-                eventClassName = focusedNode.className?.toString(),
-            )
-            val draft = TextCorrectionDraft.from(
-                TextCorrectionRequest(
-                    focusedField = snapshot,
-                    existingText = focusedNode.text?.toString().orEmpty(),
-                    hintText = focusedNode.hintText?.toString(),
-                    selectionStart = focusedNode.textSelectionStart,
-                    selectionEnd = focusedNode.textSelectionEnd,
-                ),
-            )
-            if (!draft.canCorrect) {
-                showToast("QuietType did not correct text: ${draft.blockReason}.")
-                return
-            }
-
-            val arguments = Bundle().apply {
-                putCharSequence(
-                    AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
-                    draft.textToSet,
+        Thread {
+            val result = correctionPipeline.correct(request, settings)
+            mainHandler.post {
+                applyCorrectionResult(
+                    result = result,
+                    originalSnapshot = snapshot,
                 )
             }
-            if (focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)) {
-                draft.cursorPosition?.let { cursor ->
-                    val selectionArguments = Bundle().apply {
-                        putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, cursor)
-                        putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, cursor)
+        }.start()
+    }
+
+    private fun applyCorrectionResult(
+        result: CorrectionExecutionResult,
+        originalSnapshot: FocusedFieldSnapshot,
+    ) {
+        try {
+            when (result) {
+                is CorrectionExecutionResult.Blocked -> {
+                    showToast("QuietType did not correct text: ${result.draft.blockReason}.")
+                    return
+                }
+
+                is CorrectionExecutionResult.Corrected -> {
+                    val draft = result.draft
+                    if (!draft.canCorrect) {
+                        showToast("QuietType did not correct text: ${draft.blockReason}.")
+                        return
                     }
-                    focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, selectionArguments)
+
+                    val focusedNode = rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+                    if (focusedNode == null) {
+                        showToast("Correction finished, but no editable text field is focused.")
+                        return
+                    }
+
+                    try {
+                        val currentSnapshot = focusedNode.toFocusedFieldSnapshot(
+                            eventPackageName = focusedNode.packageName?.toString(),
+                            eventClassName = focusedNode.className?.toString(),
+                        )
+                        if (!currentSnapshot.matchesCorrectionTarget(originalSnapshot)) {
+                            showToast("Focused field changed before Fix completed.")
+                            return
+                        }
+
+                        val arguments = Bundle().apply {
+                            putCharSequence(
+                                AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
+                                draft.textToSet,
+                            )
+                        }
+                        if (focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)) {
+                            draft.cursorPosition?.let { cursor ->
+                                val selectionArguments = Bundle().apply {
+                                    putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, cursor)
+                                    putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, cursor)
+                                }
+                                focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, selectionArguments)
+                            }
+                            showToast(
+                                when {
+                                    result.usedFallback && result.attemptedModelName != null ->
+                                        "${result.attemptedModelName} failed; used ${result.backendLabel}."
+                                    else -> "Corrected focused text with ${result.backendLabel}."
+                                },
+                            )
+                        } else {
+                            showToast("This field does not accept accessibility text correction.")
+                        }
+                    } finally {
+                        focusedNode.recycle()
+                    }
                 }
-                val settings = settingsStore.load()
-                if (settings.correctionModelEnabled) {
-                    showToast("Correction model download is ready, but runtime is not wired yet; used built-in cleanup.")
-                } else {
-                    showToast("Corrected focused text.")
-                }
-            } else {
-                showToast("This field does not accept accessibility text correction.")
             }
         } finally {
             isCorrectionRunning = false
             keepActiveOverlayVisible()
-            focusedNode.recycle()
         }
+    }
+
+    private fun FocusedFieldSnapshot.matchesCorrectionTarget(other: FocusedFieldSnapshot): Boolean {
+        return packageName == other.packageName &&
+            className == other.className &&
+            viewIdResourceName == other.viewIdResourceName
     }
 
     private fun insertTranscriptIntoFocusedField(transcript: String, recordHistory: Boolean) {
