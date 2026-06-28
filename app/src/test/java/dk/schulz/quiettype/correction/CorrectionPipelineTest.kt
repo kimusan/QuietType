@@ -125,7 +125,7 @@ class CorrectionPipelineTest {
     )
 }
 
-private fun tempDir(): File = createTempDirectory("voiceme-correction-test-").toFile()
+private fun tempDir(): File = createTempDirectory("quiettype-correction-test-").toFile()
 
 private class FakeDeterministicEngine(private val response: String) : CorrectionEngine {
     override fun canHandle(model: CorrectionModel): Boolean = true

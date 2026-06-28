@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "QuietType"
 include(":app")
+include(":llama-android")

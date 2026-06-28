@@ -23,7 +23,7 @@ sealed class CorrectionExecutionResult {
 class CorrectionPipeline(
     private val modelRootDirectory: File,
     private val deterministicEngine: CorrectionEngine = DeterministicCorrectionEngine(),
-    private val llamaEngine: CorrectionEngine = LlamaModelCorrectionEngine(),
+    private val llamaEngine: CorrectionEngine,
 ) : Closeable {
     fun correct(request: TextCorrectionRequest, settings: AppSettings): CorrectionExecutionResult {
         return when (val preparation = TextCorrectionDraft.prepare(request)) {

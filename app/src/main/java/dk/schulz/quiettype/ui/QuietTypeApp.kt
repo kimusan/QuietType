@@ -1315,25 +1315,25 @@ private fun QuietTypeAboutScreen(modifier: Modifier = Modifier) {
             AboutLink(
                 icon = "⌂",
                 label = "Project source",
-                url = "https://github.com/kimusan/VoiceMe",
+                url = "https://github.com/kimusan/QuietType",
                 onOpen = uriHandler::openUri,
             )
             AboutLink(
                 icon = "🛡",
                 label = "Privacy policy",
-                url = "https://github.com/kimusan/VoiceMe/blob/main/PRIVACY.md",
+                url = "https://github.com/kimusan/QuietType/blob/main/PRIVACY.md",
                 onOpen = uriHandler::openUri,
             )
             AboutLink(
                 icon = "⚖",
                 label = "License",
-                url = "https://github.com/kimusan/VoiceMe/blob/main/LICENSE",
+                url = "https://github.com/kimusan/QuietType/blob/main/LICENSE",
                 onOpen = uriHandler::openUri,
             )
             AboutLink(
                 icon = "📄",
                 label = "Third-party notices",
-                url = "https://github.com/kimusan/VoiceMe/blob/main/THIRD_PARTY_NOTICES.md",
+                url = "https://github.com/kimusan/QuietType/blob/main/THIRD_PARTY_NOTICES.md",
                 onOpen = uriHandler::openUri,
             )
         }

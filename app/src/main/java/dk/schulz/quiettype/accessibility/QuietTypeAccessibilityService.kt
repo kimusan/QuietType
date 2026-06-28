@@ -32,6 +32,7 @@ import androidx.core.content.ContextCompat
 import dk.schulz.quiettype.R
 import dk.schulz.quiettype.correction.CorrectionExecutionResult
 import dk.schulz.quiettype.correction.CorrectionPipeline
+import dk.schulz.quiettype.correction.LlamaModelCorrectionEngine
 import dk.schulz.quiettype.dictation.DictationCommand
 import dk.schulz.quiettype.dictation.DictationInteractionController
 import dk.schulz.quiettype.dictation.DictationTranscriptContract
@@ -49,6 +50,7 @@ class QuietTypeAccessibilityService : AccessibilityService() {
     private val correctionPipeline by lazy {
         CorrectionPipeline(
             modelRootDirectory = filesDir.resolve("correction-models"),
+            llamaEngine = LlamaModelCorrectionEngine(applicationContext),
         )
     }
     private var overlayView: View? = null
