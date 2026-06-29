@@ -75,11 +75,16 @@ Java_dk_schulz_quiettype_llama_LlamaAndroidBridge_nativeInit(JNIEnv * env, jobje
     std::lock_guard<std::mutex> lock(g_mutex);
     if (g_backend_initialized) return;
 
+    (void) env;
+    (void) nativeLibDir;
     llama_log_set(log_callback, nullptr);
-    const char * lib_dir = env->GetStringUTFChars(nativeLibDir, nullptr);
-    ggml_backend_load_all_from_path(lib_dir);
-    env->ReleaseStringUTFChars(nativeLibDir, lib_dir);
     llama_backend_init();
+    __android_log_print(
+        ANDROID_LOG_INFO,
+        LOG_TAG,
+        "llama backend initialized with %zu registered backends",
+        ggml_backend_reg_count()
+    );
     g_backend_initialized = true;
 }
 
